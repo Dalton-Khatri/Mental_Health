@@ -172,7 +172,7 @@ def clean_text(text):
 
 def load_and_inspect():
     """
-    Load the three raw datasets into DataFrames and print basic stats
+    Loading the three raw datasets into DataFrames and print basic stats
     so we can confirm the shape of the data before writing any cleaning code.
     """
     print("=" * 70)
