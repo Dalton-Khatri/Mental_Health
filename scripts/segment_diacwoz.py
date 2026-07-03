@@ -8,10 +8,10 @@ from tqdm import tqdm
 # ----------------------------
 # Paths
 # ----------------------------
-DATASET_PATH = "D:/daic_woz_processing"
+DATASET_PATH = "D:/Mental_health/daic_woz_processing"
 
-OUTPUT_AUDIO = "processed/audio"
-OUTPUT_TEXT = "processed/transcript"
+OUTPUT_AUDIO = "D:/Mental_health/processed/audio"
+OUTPUT_TEXT = "D:/Mental_health/processed/transcript"
 
 os.makedirs(OUTPUT_AUDIO, exist_ok=True)
 os.makedirs(OUTPUT_TEXT, exist_ok=True)
