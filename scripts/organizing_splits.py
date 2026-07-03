@@ -6,7 +6,7 @@ from sklearn.utils.class_weight import compute_class_weight
 # ----------------------------
 # Paths
 # ----------------------------
-SPLIT_DIR       = "D:/daic_woz_processing/splits"   # folder containing the four CSVs
+SPLIT_DIR       = "D:/Mental_health/daic_woz_processing/splits"   # folder containing the four CSVs
 PROCESSED_AUDIO = "processed/audio"
 PROCESSED_TEXT  = "processed/transcript"
 OUTPUT_DIR      = "processed/splits"
