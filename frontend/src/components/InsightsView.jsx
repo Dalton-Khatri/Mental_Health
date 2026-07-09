@@ -101,11 +101,11 @@ export default function InsightsView({ notes, onOpenNote, searchQuery }) {
     <div className="sr-insights-view">
       {/* ─── Weekly Analysis Card ─── */}
       <div className="sr-analysis-card">
-        <h3>Weekly Transcript Analysis</h3>
+        <h3>Weekly Summary</h3>
         <div className="sr-analysis-grid">
           {/* Synthesized Patterns */}
           <div className="sr-analysis-patterns">
-            <span className="sr-analysis-label">SYNTHESIZED PATTERNS</span>
+            <span className="sr-analysis-label">Synthesized Patterns</span>
             <ul>
               {patterns.map((p, idx) => (
                 <li key={idx}>
@@ -115,15 +115,16 @@ export default function InsightsView({ notes, onOpenNote, searchQuery }) {
               ))}
             </ul>
           </div>
+
+          {/* Symmetrical Vertical Divider */}
+          <div className="sr-analysis-divider" />
           
           {/* Reflection Summary */}
           <div className="sr-analysis-reflection">
-            <div className="sr-reflection-box">
-              <span className="sr-reflection-label">Reflection Summary</span>
-              <p className="sr-reflection-text">
-                "{summary}"
-              </p>
-            </div>
+            <span className="sr-analysis-label">Reflection Summary</span>
+            <p className="sr-reflection-text">
+              "{summary}"
+            </p>
           </div>
         </div>
       </div>

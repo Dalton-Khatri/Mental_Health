@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Mic, CheckCircle2, Circle, Star, Calendar, ChevronRight, Wind, Heart } from "lucide-react";
 
 export default function HomeView({ 
+  user,
   notes, 
   onStartScreening, 
   focusTasks, 
@@ -159,7 +160,7 @@ export default function HomeView({
       {/* ─── Hero Banner ─── */}
       <div className="sr-hero-card">
         <div className="sr-hero-content">
-          <h1>Good morning, Alex.</h1>
+          <h1>Good morning, {user?.name || "User"}.</h1>
           <p>It's a brand new day. Let's take a moment to see how your voice reflects your inner world today.</p>
           <button className="sr-hero-btn" onClick={onStartScreening} id="btn-start-new-screening">
             <Mic size={16} />
