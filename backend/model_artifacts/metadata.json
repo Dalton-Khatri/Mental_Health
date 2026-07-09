@@ -1,0 +1,14 @@
+{
+  "model_type": "LogisticRegression",
+  "embedding_type": "wav2vec2_mean_pooled",
+  "embedding_dim": 768,
+  "best_C": 0.1,
+  "test_metrics": {
+    "accuracy": 0.44680851063829785,
+    "precision": 0.16666666666666666,
+    "recall": 0.21428571428571427,
+    "f1": 0.1875,
+    "roc_auc": 0.3658008658008658
+  },
+  "sklearn_version": "1.6.1"
+}
