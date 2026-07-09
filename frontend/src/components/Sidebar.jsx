@@ -6,8 +6,7 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
     { id: "home", label: "Home", icon: <Home size={18} /> },
     { id: "insights", label: "Voice Insights", icon: <AudioLines size={18} /> },
     { id: "activities", label: "Activities", icon: <Sparkles size={18} /> },
-    { id: "resources", label: "Resources", icon: <BookOpen size={18} /> },
-    { id: "support", label: "Support", icon: <Heart size={18} /> }
+    { id: "resources", label: "Resources", icon: <BookOpen size={18} /> }
   ];
 
   return (

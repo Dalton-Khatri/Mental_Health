@@ -22,11 +22,12 @@ import {
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import Auth from "./Auth";
+import VerifyEmail from "./VerifyEmail";
+import ResetPassword from "./ResetPassword";
 import HomeView from "./components/HomeView";
 import InsightsView from "./components/InsightsView";
 import ActivitiesView from "./components/ActivitiesView";
 import ResourcesView from "./components/ResourcesView";
-import SupportView from "./components/SupportView";
 import RecordingOverlay from "./components/RecordingOverlay";
 import { 
   ArticleModal, 
@@ -733,7 +734,6 @@ export default function App() {
       case "insights": return "Voice Insights";
       case "activities": return "Wellness Activities";
       case "resources": return "Knowledge Library";
-      case "support": return "Support & Assistance";
       default: return "SerenityScreen";
     }
   };
@@ -745,6 +745,7 @@ export default function App() {
       case "home":
         return (
           <HomeView
+            user={user}
             notes={notes}
             onStartScreening={startRecording}
             focusTasks={focusTasks}
@@ -764,12 +765,19 @@ export default function App() {
         return <ActivitiesView onOpenModal={handleOpenModal} />;
       case "resources":
         return <ResourcesView onOpenModal={handleOpenModal} searchQuery={searchQuery} />;
-      case "support":
-        return <SupportView onOpenModal={handleOpenModal} />;
       default:
         return null;
     }
   };
+
+  const currentPath = window.location.pathname;
+
+  if (currentPath === "/verify-email") {
+    return <VerifyEmail />;
+  }
+  if (currentPath === "/reset-password") {
+    return <ResetPassword />;
+  }
 
   if (!token) {
     return <Auth onLoginSuccess={(u, t) => { setUser(u); setToken(t); }} />;
@@ -1324,7 +1332,7 @@ export default function App() {
         }
 
         /* ─── Activities Layout ─── */
-        .sr-activities-view, .sr-resources-view, .sr-insights-view, .sr-support-view {
+        .sr-activities-view, .sr-resources-view, .sr-insights-view {
           margin: 0 40px 48px;
           animation: sr-fadeIn 0.35s ease both;
           text-align: left;
@@ -1594,8 +1602,13 @@ export default function App() {
         }
         .sr-analysis-grid {
           display: grid;
-          grid-template-columns: 1.2fr 1fr;
-          gap: 32px;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 36px;
+          align-items: stretch;
+        }
+        .sr-analysis-divider {
+          width: 1px;
+          background: rgba(91,154,139,0.12);
         }
         .sr-analysis-label {
           font-size: 11px;
@@ -1630,24 +1643,10 @@ export default function App() {
           margin-top: 7px;
           flex: none;
         }
-        .sr-reflection-box {
-          background: #f6f8f7;
-          border-radius: 20px;
-          padding: 20px;
-          border: 1px solid #edf2f0;
-          height: 100%;
-        }
-        .sr-reflection-label {
-          font-size: 12.5px;
-          font-weight: 600;
-          color: var(--ink);
-          display: block;
-          margin-bottom: 8px;
-        }
         .sr-reflection-text {
           margin: 0;
-          font-size: 13px;
-          line-height: 1.6;
+          font-size: 14px;
+          line-height: 1.65;
           color: var(--ink-soft);
           font-style: italic;
         }
@@ -2365,6 +2364,8 @@ export default function App() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onLogout={handleLogout}
+          user={user}
+          showSearch={currentTab === "resources"}
         />
 
         {/* Mic permission or capture error banner */}
