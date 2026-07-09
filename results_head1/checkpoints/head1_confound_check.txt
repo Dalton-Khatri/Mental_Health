@@ -1,0 +1,19 @@
+HEAD 1 (CONDITION CLASSIFIER) CONFOUND CHECK
+==================================================
+
+Verdict: PASSED
+Accuracy gap: 3.2 percentage points
+
+Accuracy by source:
+  Mukherjee: 0.8537
+  Dreaddit:  0.8215
+
+Error distribution:
+  mukherjee: 709 errors (91.8%)
+  dreaddit: 63 errors (8.2%)
+
+Cross-tabulation:
+correct         Correct  Incorrect
+source_dataset                    
+dreaddit            290         63
+mukherjee          4136        709
