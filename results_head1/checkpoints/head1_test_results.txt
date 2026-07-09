@@ -1,0 +1,30 @@
+HEAD 1 (CONDITION CLASSIFIER) TEST SET RESULTS
+==================================================
+
+Best epoch: 9
+Val macro F1 at best epoch: 0.8215
+
+Test Macro F1:  0.8272
+Test Accuracy:  0.8515
+
+Classification Report:
+              precision    recall  f1-score   support
+
+      Normal       0.95      0.96      0.95      1938
+  Depression       0.80      0.75      0.78      1424
+     Anxiety       0.83      0.89      0.86       532
+      Stress       0.77      0.77      0.77       185
+    Suicidal       0.76      0.79      0.78      1119
+
+    accuracy                           0.85      5198
+   macro avg       0.82      0.83      0.83      5198
+weighted avg       0.85      0.85      0.85      5198
+
+Confusion Matrix:
+Label order: ['Normal', 'Depression', 'Anxiety', 'Stress', 'Suicidal']
+   1851     21     23     17     26
+     46   1075     52     11    240
+     13     30    475     10      4
+     12      8     20    142      3
+     19    209      4      4    883
+

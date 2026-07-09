@@ -1,7 +1,7 @@
 import React from "react";
 import { Search, HelpCircle, User } from "lucide-react";
 
-export default function TopBar({ title, searchQuery, onSearchChange }) {
+export default function TopBar({ title, searchQuery, onSearchChange, onLogout }) {
   return (
     <header className="sr-topbar" role="banner">
       {/* Title */}
@@ -37,6 +37,7 @@ export default function TopBar({ title, searchQuery, onSearchChange }) {
           className="sr-avatar-btn" 
           aria-label="User profile settings"
           title="Alex Profile"
+          onClick={onLogout}
         >
           <div className="sr-avatar">
             <User size={18} />

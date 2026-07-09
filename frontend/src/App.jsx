@@ -21,6 +21,7 @@ import {
 // Import modular components
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
+import Auth from "./Auth";
 import HomeView from "./components/HomeView";
 import InsightsView from "./components/InsightsView";
 import ActivitiesView from "./components/ActivitiesView";
@@ -38,6 +39,8 @@ import {
   ChatModal 
 } from "./components/Modals";
 import { ARTICLES } from "./components/ResourcesView";
+
+const SERVER_API = "http://localhost:5000/api";
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -439,24 +442,44 @@ export default function App() {
   // Navigation State
   const [currentTab, setCurrentTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Notes/Screenings State (Persisted in LocalStorage)
-  const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem("notes");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map(n => ({ ...n, createdAt: new Date(n.createdAt) }));
-      } catch (e) {
-        return MOCK_SCREENINGS;
-      }
-    }
-    return MOCK_SCREENINGS;
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
   });
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setToken(null);
+    setUser(null);
+  };
+
+  // Notes/Screenings State
+  const [notes, setNotes] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem("notes", JSON.stringify(notes));
-  }, [notes]);
+    if (!token) return;
+    fetch(`${SERVER_API}/screenings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const mapped = data.map((s) => ({
+          id: s.id,
+          title: `Wellness check — ${new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
+          url: s.audioUrl,
+          peaks: Array(60).fill(0.2),
+          duration: 0,
+          mood: 3,
+          score: s.conditionConfidence ? Math.round(s.conditionConfidence * 100) : undefined,
+          createdAt: new Date(s.createdAt),
+          transcript: s.transcript || "",
+        }));
+        setNotes(mapped);
+      })
+      .catch((err) => console.error("Failed to load screenings:", err));
+  }, [token]);
 
   // Today's Focus Checklist State (Persisted in LocalStorage)
   const [focusTasks, setFocusTasks] = useState(() => {
@@ -645,6 +668,19 @@ export default function App() {
 
         // Unlock the "Review Voice Trends" checklist item
         setFocusTasks((prev) => ({ ...prev, trends: false }));
+
+        const saveFormData = new FormData();
+        saveFormData.append("audio", blob, `checkin.${fileExtension}`);
+        saveFormData.append("conditionLabel", "pending");
+        saveFormData.append("conditionConfidence", "0");
+        saveFormData.append("causeLabel", "pending");
+        saveFormData.append("causeConfidence", "0");
+
+        fetch(`${SERVER_API}/screenings`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: saveFormData,
+        }).catch((err) => console.error("Failed to save screening to database:", err));
       })
       .catch((err) => {
         console.error("Transcription error:", err);
@@ -734,6 +770,10 @@ export default function App() {
         return null;
     }
   };
+
+  if (!token) {
+    return <Auth onLoginSuccess={(u, t) => { setUser(u); setToken(t); }} />;
+  }
 
   return (
     <div className="sr-app-container">
@@ -2324,6 +2364,7 @@ export default function App() {
           title={getTabTitle()}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onLogout={handleLogout}
         />
 
         {/* Mic permission or capture error banner */}

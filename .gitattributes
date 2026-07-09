@@ -1,0 +1,2 @@
+*.pt filter=lfs diff=lfs merge=lfs -text
+results_head1/checkpoints/*.pt filter=lfs diff=lfs merge=lfs -text
