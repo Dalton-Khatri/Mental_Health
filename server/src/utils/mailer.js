@@ -28,22 +28,22 @@ async function openPreview(url) {
   await open(url);
 }
 
-async function sendVerificationEmail(toEmail, token) {
+async function sendVerificationCode(toEmail, code) {
   const transporter = await getTransporter();
-  const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
   const info = await transporter.sendMail({
     from: '"SerenityScreen" <noreply@serenityscreen.dev>',
     to: toEmail,
-    subject: 'Verify your SerenityScreen account',
+    subject: 'Your SerenityScreen verification code',
     html: `<p>Welcome to SerenityScreen!</p>
-           <p>Click the link below to verify your email and activate your account:</p>
-           <a href="${link}">${link}</a>
+           <p>Your verification code is:</p>
+           <h2 style="letter-spacing: 4px;">${code}</h2>
+           <p>Enter this code in the app to activate your account. This code expires in 10 minutes.</p>
            <p>If you didn't sign up, you can ignore this email.</p>`
   });
 
   const previewUrl = nodemailer.getTestMessageUrl(info);
-  console.log('Verification email preview URL:', previewUrl);
+  console.log('Verification code email preview URL:', previewUrl);
   if (previewUrl) await openPreview(previewUrl);
 }
 
@@ -66,4 +66,4 @@ async function sendResetPasswordEmail(toEmail, token) {
   if (previewUrl) await openPreview(previewUrl);
 }
 
-module.exports = { sendVerificationEmail, sendResetPasswordEmail };
+module.exports = { sendVerificationCode, sendResetPasswordEmail };

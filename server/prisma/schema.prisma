@@ -13,16 +13,18 @@ generator client {
 }
 
 model User {
-  id               String      @id @default(uuid())
-  name             String
-  email            String      @unique
-  passwordHash     String
-  isVerified       Boolean     @default(false)
-  verifyToken      String?
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  createdAt        DateTime    @default(now())
-  screenings       Screening[]
+  id                String      @id @default(uuid())
+  name              String
+  email             String      @unique
+  passwordHash      String
+  isVerified        Boolean     @default(false)
+  verifyCode        String?
+  verifyCodeExpiry  DateTime?
+  verifyAttempts    Int         @default(0)
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime    @default(now())
+  screenings        Screening[]
 }
 
 model Screening {

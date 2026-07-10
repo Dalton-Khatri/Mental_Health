@@ -3,12 +3,18 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../prismaClient');
-const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
+const { sendVerificationCode, sendResetPasswordEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 const PASSWORD_RULE_MESSAGE = 'Password must be at least 8 characters and include at least one letter and one number';
+const MAX_VERIFY_ATTEMPTS = 5;
+const CODE_EXPIRY_MINUTES = 10;
+
+function generateCode() {
+  return crypto.randomInt(100000, 999999).toString();
+}
 
 // SIGNUP
 router.post('/signup', async (req, res) => {
@@ -29,16 +35,26 @@ router.post('/signup', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyCode = generateCode();
+    const verifyCodeExpiry = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
 
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash, verifyToken, isVerified: false }
+    await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        verifyCode,
+        verifyCodeExpiry,
+        verifyAttempts: 0,
+        isVerified: false
+      }
     });
 
-    await sendVerificationEmail(email, verifyToken);
+    await sendVerificationCode(email, verifyCode);
 
     res.status(201).json({
-      message: 'Account created. Please check your email to verify your account before logging in.'
+      message: 'Account created. We sent a 6-digit code to your email — enter it to verify your account.',
+      email
     });
   } catch (err) {
     console.error(err);
@@ -46,29 +62,94 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// VERIFY EMAIL
-router.get('/verify-email', async (req, res) => {
-  const { token } = req.query;
+// VERIFY CODE
+router.post('/verify-code', async (req, res) => {
+  const { email, code } = req.body;
 
-  if (!token) {
-    return res.status(400).json({ error: 'Missing verification token' });
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Missing email or code' });
   }
 
   try {
-    const user = await prisma.user.findFirst({ where: { verifyToken: token } });
+    const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired verification link' });
+      return res.status(400).json({ error: 'Invalid email or code' });
+    }
+
+    if (user.isVerified) {
+      return res.json({ message: 'Account already verified. You can log in.' });
+    }
+
+    if (!user.verifyCode || !user.verifyCodeExpiry || user.verifyCodeExpiry < new Date()) {
+      return res.status(400).json({ error: 'Code has expired. Please request a new one.' });
+    }
+
+    if (user.verifyAttempts >= MAX_VERIFY_ATTEMPTS) {
+      return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new code.' });
+    }
+
+    if (user.verifyCode !== code) {
+      const attemptsLeft = MAX_VERIFY_ATTEMPTS - (user.verifyAttempts + 1);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verifyAttempts: { increment: 1 } }
+      });
+      return res.status(400).json({
+        error: `Incorrect code. ${attemptsLeft > 0 ? `${attemptsLeft} attempt(s) left.` : 'No attempts left — please request a new code.'}`
+      });
     }
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { isVerified: true, verifyToken: null }
+      data: {
+        isVerified: true,
+        verifyCode: null,
+        verifyCodeExpiry: null,
+        verifyAttempts: 0
+      }
     });
 
     res.json({ message: 'Email verified successfully. You can now log in.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// RESEND CODE
+router.post('/resend-code', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Missing email' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+
+    if (user.isVerified) {
+      return res.json({ message: 'Account already verified. You can log in.' });
+    }
+
+    const verifyCode = generateCode();
+    const verifyCodeExpiry = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verifyCode, verifyCodeExpiry, verifyAttempts: 0 }
+    });
+
+    await sendVerificationCode(email, verifyCode);
+
+    res.json({ message: 'A new code has been sent to your email.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to resend code' });
   }
 });
 
@@ -92,7 +173,7 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({ error: 'Please verify your email before logging in. Check your inbox.' });
+      return res.status(403).json({ error: 'Please verify your email before logging in.', needsVerification: true, email: user.email });
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -107,7 +188,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// FORGOT PASSWORD
+// FORGOT PASSWORD (still link-based — unchanged)
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
@@ -139,7 +220,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// RESET PASSWORD
+// RESET PASSWORD (still link-based — unchanged)
 router.post('/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
 
