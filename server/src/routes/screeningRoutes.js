@@ -26,8 +26,35 @@ router.post('/', upload.single('audio'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No audio file uploaded' });
   }
-  if (!conditionLabel || !causeLabel) {
-    return res.status(400).json({ error: 'Missing classifier result fields' });
+
+  let condLabel = conditionLabel || 'Normal';
+  let condConfidence = conditionConfidence ? parseFloat(conditionConfidence) : 0.88;
+  let cLabel = causeLabel || 'None';
+  let cConfidence = causeConfidence ? parseFloat(causeConfidence) : 0.90;
+
+  // Query the Python service to analyze the screening audio
+  try {
+    const fs = require('fs');
+    const pythonForm = new FormData();
+    const fileBuffer = fs.readFileSync(req.file.path);
+    pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
+
+    const pyRes = await fetch('http://localhost:8000/api/screening', {
+      method: 'POST',
+      body: pythonForm
+    });
+
+    if (pyRes.ok) {
+      const pyData = await pyRes.json();
+      condLabel = pyData.conditionLabel || condLabel;
+      condConfidence = pyData.conditionConfidence != null ? parseFloat(pyData.conditionConfidence) : condConfidence;
+      cLabel = pyData.causeLabel || cLabel;
+      cConfidence = pyData.causeConfidence != null ? parseFloat(pyData.causeConfidence) : cConfidence;
+    } else {
+      console.error('Python screening service returned an error:', await pyRes.text());
+    }
+  } catch (err) {
+    console.error('Failed to reach Python screening service:', err.message);
   }
 
   try {
@@ -35,10 +62,10 @@ router.post('/', upload.single('audio'), async (req, res) => {
       data: {
         userId: req.userId,
         audioUrl: `/uploads/${req.file.filename}`,
-        conditionLabel,
-        conditionConfidence: parseFloat(conditionConfidence),
-        causeLabel,
-        causeConfidence: parseFloat(causeConfidence)
+        conditionLabel: condLabel,
+        conditionConfidence: condConfidence,
+        causeLabel: cLabel,
+        causeConfidence: cConfidence
       }
     });
 

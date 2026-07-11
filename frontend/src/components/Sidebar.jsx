@@ -1,9 +1,10 @@
 import React from "react";
-import { Home, AudioLines, Sparkles, BookOpen, Heart, Wind } from "lucide-react";
+import { Home, AudioLines, Sparkles, BookOpen, Heart, Wind, MessageSquare } from "lucide-react";
 
 export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
   const navItems = [
     { id: "home", label: "Home", icon: <Home size={18} /> },
+    { id: "conversation", label: "Voice Reflection", icon: <MessageSquare size={18} /> },
     { id: "insights", label: "Voice Insights", icon: <AudioLines size={18} /> },
     { id: "activities", label: "Activities", icon: <Sparkles size={18} /> },
     { id: "resources", label: "Resources", icon: <BookOpen size={18} /> }

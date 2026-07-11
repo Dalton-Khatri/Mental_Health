@@ -97,5 +97,78 @@ async def transcribe_audio(file: UploadFile = File(...)):
             except Exception as e:
                 print(f"Failed to remove temp file {temp_path}: {e}")
 
+@app.post("/api/assessment")
+async def analyze_assessment(file: UploadFile = File(...)):
+    if not ffmpeg_available:
+        raise HTTPException(
+            status_code=500,
+            detail="ffmpeg is not installed on the server. Whisper requires ffmpeg to process audio files. Please install ffmpeg and restart the server."
+        )
+
+    try:
+        suffix = os.path.splitext(file.filename)[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            temp_path = temp_file.name
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded audio: {str(e)}")
+
+    try:
+        model = get_whisper_model()
+        print(f"Transcribing assessment audio file: {temp_path}")
+        result = model.transcribe(temp_path, fp16=False)
+        transcript = result.get("text", "").strip()
+        print(f"Transcription result: {transcript}")
+
+        from analysis_service import get_audio_analysis_service
+        analysis_service = get_audio_analysis_service()
+        analysis_results = analysis_service.analyze_assessment(temp_path)
+
+        return {
+            "transcript": transcript,
+            "prediction": analysis_results["prediction"],
+            "confidence": analysis_results["confidence"]
+        }
+    except Exception as e:
+        print(f"Error during assessment analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Assessment analysis failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception as e:
+                print(f"Failed to remove temp file {temp_path}: {e}")
+
+@app.post("/api/screening")
+async def analyze_screening(file: UploadFile = File(...)):
+    try:
+        suffix = os.path.splitext(file.filename)[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            temp_path = temp_file.name
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded audio: {str(e)}")
+
+    try:
+        from analysis_service import get_audio_analysis_service
+        analysis_service = get_audio_analysis_service()
+        analysis_results = analysis_service.analyze_screening(temp_path)
+
+        return {
+            "conditionLabel": analysis_results["conditionLabel"],
+            "conditionConfidence": analysis_results["conditionConfidence"],
+            "causeLabel": analysis_results["causeLabel"],
+            "causeConfidence": analysis_results["causeConfidence"]
+        }
+    except Exception as e:
+        print(f"Error during screening analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Screening analysis failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception as e:
+                print(f"Failed to remove temp file {temp_path}: {e}")
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

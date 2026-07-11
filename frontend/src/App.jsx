@@ -28,6 +28,7 @@ import HomeView from "./components/HomeView";
 import InsightsView from "./components/InsightsView";
 import ActivitiesView from "./components/ActivitiesView";
 import ResourcesView from "./components/ResourcesView";
+import ConversationView from "./components/ConversationView";
 import RecordingOverlay from "./components/RecordingOverlay";
 import { 
   ArticleModal, 
@@ -731,6 +732,7 @@ export default function App() {
   const getTabTitle = () => {
     switch (currentTab) {
       case "home": return "Home";
+      case "conversation": return "Voice Reflection";
       case "insights": return "Voice Insights";
       case "activities": return "Wellness Activities";
       case "resources": return "Knowledge Library";
@@ -748,9 +750,19 @@ export default function App() {
             user={user}
             notes={notes}
             onStartScreening={startRecording}
+            onStartConversation={() => setCurrentTab("conversation")}
             focusTasks={focusTasks}
             onToggleFocusTask={toggleFocusTask}
             onOpenModal={handleOpenModal}
+          />
+        );
+      case "conversation":
+        return (
+          <ConversationView
+            user={user}
+            token={token}
+            SERVER_API={SERVER_API}
+            onSessionComplete={() => setCurrentTab("home")}
           />
         );
       case "insights":
@@ -905,6 +917,8 @@ export default function App() {
           justify-content: space-between;
           padding: 32px 0 24px;
           z-index: 10;
+          box-sizing: border-box;
+          overflow-y: auto;
         }
         .sr-sidebar-brand {
           display: flex;
@@ -2338,6 +2352,680 @@ export default function App() {
         .sr-main-workspace::-webkit-scrollbar-thumb:hover,
         .sr-gratitude-list::-webkit-scrollbar-thumb:hover {
           background: rgba(0,0,0,0.15);
+        }
+
+        /* ─── Hero Button Group ─── */
+        .sr-hero-btn-group {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .sr-hero-btn--secondary {
+          background: rgba(255,255,255,0.18);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.3);
+          box-shadow: none;
+        }
+        .sr-hero-btn--secondary:hover {
+          background: rgba(255,255,255,0.28);
+          border-color: rgba(255,255,255,0.5);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+
+        /* ═══════════════════════════════════════════════════ */
+        /* ─── Conversation / Voice Reflection Session ─── */
+        /* ═══════════════════════════════════════════════════ */
+
+        .sr-fade-in {
+          animation: sr-fadeIn 0.45s ease both;
+        }
+        .sr-conversation-container {
+          padding: 0 40px 48px;
+        }
+        .sr-conversation-card {
+          background: #fff;
+          border-radius: var(--radius-lg);
+          padding: 40px;
+          box-shadow: var(--shadow-soft);
+          border: 1px solid var(--glass-border);
+          max-width: 820px;
+          margin: 0 auto;
+          text-align: left;
+        }
+
+        /* ─── Intro Screen ─── */
+        .sr-convo-header {
+          text-align: center;
+          margin-bottom: 32px;
+        }
+        .sr-convo-badge {
+          display: inline-block;
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 6px 16px;
+          border-radius: 999px;
+          margin-bottom: 16px;
+        }
+        .sr-convo-header h2 {
+          font-size: 28px;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 0 0 10px;
+          letter-spacing: -0.02em;
+        }
+        .sr-convo-desc {
+          font-size: 15px;
+          color: var(--ink-soft);
+          line-height: 1.6;
+          max-width: 520px;
+          margin: 0 auto;
+        }
+
+        .sr-convo-info-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 28px;
+        }
+        .sr-info-tile {
+          background: var(--surface-solid);
+          border-radius: 18px;
+          padding: 22px 16px;
+          text-align: center;
+          border: 1px solid var(--glass-border);
+        }
+        .sr-info-tile .sr-info-val {
+          display: block;
+          font-size: 28px;
+          font-weight: 700;
+          color: var(--accent-ink);
+          margin-bottom: 4px;
+        }
+        .sr-info-tile .sr-info-lbl {
+          font-size: 12px;
+          color: var(--ink-soft);
+          font-weight: 500;
+        }
+
+        .sr-convo-guidelines {
+          background: #fafcfb;
+          border: 1px solid #edf2f0;
+          border-radius: 18px;
+          padding: 22px 28px;
+          margin-bottom: 32px;
+        }
+        .sr-convo-guidelines h4 {
+          margin: 0 0 12px;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--ink);
+        }
+        .sr-convo-guidelines ul {
+          margin: 0;
+          padding-left: 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .sr-convo-guidelines li {
+          font-size: 13.5px;
+          color: var(--ink-soft);
+          line-height: 1.55;
+        }
+
+        .sr-convo-action-btn {
+          width: 100%;
+          border: none;
+          background: var(--accent-ink);
+          color: #fff;
+          padding: 16px 28px;
+          border-radius: 999px;
+          font-size: 15px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          box-shadow: 0 6px 20px rgba(43,97,79,0.2);
+        }
+        .sr-convo-action-btn:hover {
+          background: #2b614f;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 28px rgba(43,97,79,0.28);
+        }
+        .sr-convo-action-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        /* ─── Processing Screen ─── */
+        .sr-convo-processing {
+          text-align: center;
+          padding: 60px 40px;
+        }
+        .sr-convo-processing h3 {
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 24px 0 10px;
+        }
+        .sr-convo-processing p {
+          font-size: 14px;
+          color: var(--ink-soft);
+          line-height: 1.6;
+          max-width: 400px;
+          margin: 0 auto;
+        }
+        .sr-pulse-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* ─── Results Screen ─── */
+        .sr-success-header {
+          text-align: center;
+          margin-bottom: 28px;
+        }
+        .sr-success-icon-wrap {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: var(--accent-soft);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 16px;
+        }
+        .sr-success-header h2 {
+          font-size: 24px;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 0 0 8px;
+        }
+        .sr-success-header p {
+          font-size: 14px;
+          color: var(--ink-soft);
+          max-width: 440px;
+          margin: 0 auto;
+          line-height: 1.55;
+        }
+        .sr-checked-green {
+          color: #2b614f;
+        }
+
+        .sr-insights-dashboard {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          margin-bottom: 28px;
+        }
+
+        .sr-convo-metric-card,
+        .sr-convo-transcript-card,
+        .sr-recordings-review {
+          background: #fafcfb;
+          border: 1px solid #edf2f0;
+          border-radius: 18px;
+          padding: 22px 28px;
+        }
+        .sr-convo-metric-card h4,
+        .sr-convo-transcript-card h4,
+        .sr-recordings-review h4 {
+          margin: 0 0 14px;
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--ink);
+        }
+        .sr-metric-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #edf2f0;
+        }
+        .sr-metric-row:last-child {
+          border-bottom: none;
+        }
+        .sr-metric-label {
+          font-size: 13.5px;
+          color: var(--ink-soft);
+        }
+        .sr-metric-val {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--accent-ink);
+        }
+        .sr-transcript-text {
+          font-size: 13.5px;
+          color: var(--ink-soft);
+          line-height: 1.6;
+          font-style: italic;
+          max-height: 180px;
+          overflow-y: auto;
+          padding-right: 8px;
+        }
+
+        .sr-audio-review-list {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .sr-audio-review-item {
+          background: #fff;
+          border: 1px solid #edf2f0;
+          border-radius: 14px;
+          padding: 16px 20px;
+        }
+        .sr-review-item-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        .sr-review-q-num {
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+          font-size: 11px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 999px;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .sr-review-q-text {
+          font-size: 13px;
+          color: var(--ink);
+          margin: 0;
+          line-height: 1.45;
+        }
+        .sr-review-audio-controls {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .sr-audio-element {
+          flex: 1;
+          height: 36px;
+          border-radius: 8px;
+        }
+        .sr-review-duration {
+          font-size: 12px;
+          color: var(--ink-faint);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+        }
+
+        /* ─── Interview Step ─── */
+        .sr-interview-header {
+          margin-bottom: 28px;
+        }
+        .sr-progress-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+        .sr-progress-fraction {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--accent-ink);
+        }
+        .sr-progress-estimate {
+          font-size: 12px;
+          color: var(--ink-faint);
+        }
+
+        .sr-active-question-section {
+          margin-bottom: 32px;
+        }
+        .sr-question-tag {
+          display: inline-block;
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          padding: 5px 14px;
+          border-radius: 999px;
+          margin-bottom: 14px;
+        }
+        .sr-active-question-section h3 {
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--ink);
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .sr-mic-error-message {
+          background: rgba(231,76,60,0.06);
+          border: 1px solid rgba(231,76,60,0.12);
+          color: #c0392b;
+          padding: 12px 20px;
+          border-radius: 14px;
+          font-size: 13px;
+          margin-bottom: 20px;
+        }
+
+        /* ─── Recording Workspace ─── */
+        .sr-recording-workspace {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+          margin-bottom: 32px;
+          padding: 28px 0;
+        }
+
+        .sr-recording-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .sr-status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--ink-faint);
+          transition: background 0.3s;
+        }
+        .sr-status-dot--recording {
+          background: #e74c3c;
+          animation: sr-rec-pulse 1.2s infinite;
+        }
+        .sr-status-dot--paused {
+          background: #f39c12;
+          animation: sr-rec-pulse 2s infinite;
+        }
+        .sr-status-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--ink-soft);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .sr-vocal-viz-outer {
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          background: var(--accent-soft);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          transition: all 0.4s ease;
+        }
+        .sr-vocal-viz-inner {
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: inset 0 2px 12px rgba(0,0,0,0.03);
+          transition: all 0.4s ease;
+          overflow: hidden;
+        }
+        .sr-vocal-viz-inner--recording {
+          background: linear-gradient(135deg, #e8f5f0, #d4ece5);
+          box-shadow: 0 0 40px rgba(91,154,139,0.15);
+        }
+
+        .sr-wave-bars {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          height: 100%;
+          padding: 30px 12px;
+        }
+        .sr-wave-bar {
+          width: 3px;
+          min-height: 4px;
+          background: var(--accent-ink);
+          border-radius: 2px;
+          transition: height 0.08s ease;
+          opacity: 0.7;
+        }
+
+        .sr-mic-icon--idle {
+          color: var(--ink-faint);
+        }
+        .sr-mic-icon--has-rec {
+          color: var(--accent-ink);
+        }
+
+        .sr-convo-timer {
+          font-size: 32px;
+          font-weight: 700;
+          color: var(--ink);
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0.02em;
+        }
+
+        .sr-audio-preview {
+          width: 100%;
+          max-width: 400px;
+        }
+        .sr-audio-preview audio {
+          width: 100%;
+          height: 40px;
+          border-radius: 12px;
+        }
+
+        /* ─── Record Button Console ─── */
+        .sr-button-console {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          max-width: 400px;
+        }
+        .sr-record-btn {
+          width: 100%;
+          border: none;
+          background: var(--accent-ink);
+          color: #fff;
+          padding: 15px 28px;
+          border-radius: 999px;
+          font-size: 15px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          box-shadow: 0 6px 20px rgba(43,97,79,0.2);
+        }
+        .sr-record-btn:hover {
+          background: #2b614f;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 28px rgba(43,97,79,0.28);
+        }
+        .sr-record-btn--exists {
+          background: transparent;
+          color: var(--accent-ink);
+          border: 2px solid var(--accent);
+          box-shadow: none;
+        }
+        .sr-record-btn--exists:hover {
+          background: var(--accent-soft);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(91,154,139,0.12);
+        }
+
+        .sr-recording-active-controls {
+          display: flex;
+          gap: 12px;
+          width: 100%;
+        }
+        .sr-console-subbtn {
+          flex: 1;
+          border: none;
+          padding: 13px 18px;
+          border-radius: 999px;
+          font-size: 13.5px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .sr-pause-btn {
+          background: #fef3e2;
+          color: #e67e22;
+        }
+        .sr-pause-btn:hover {
+          background: #fde8c8;
+        }
+        .sr-resume-btn {
+          background: var(--accent-soft);
+          color: var(--accent-ink);
+        }
+        .sr-resume-btn:hover {
+          background: #d4ece5;
+        }
+        .sr-stop-btn {
+          background: #fdeaea;
+          color: #c0392b;
+        }
+        .sr-stop-btn:hover {
+          background: #fad4d4;
+        }
+
+        /* ─── Step Navigation ─── */
+        .sr-step-navigation {
+          display: flex;
+          justify-content: space-between;
+          gap: 14px;
+        }
+        .sr-nav-step-btn {
+          flex: 1;
+          border: 1px solid #e2e8f0;
+          background: #fff;
+          padding: 14px 20px;
+          border-radius: 999px;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: var(--ink-soft);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .sr-nav-step-btn:hover:not(:disabled) {
+          border-color: var(--accent);
+          color: var(--accent-ink);
+          background: var(--accent-soft);
+        }
+        .sr-nav-step-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+        .sr-nav-step-btn--next {
+          background: var(--accent-ink);
+          color: #fff;
+          border-color: var(--accent-ink);
+        }
+        .sr-nav-step-btn--next:hover:not(:disabled) {
+          background: #2b614f;
+          border-color: #2b614f;
+          color: #fff;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(43,97,79,0.2);
+        }
+
+        /* ─── Confirmation Dialog ─── */
+        .sr-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          backdrop-filter: blur(4px);
+        }
+        .sr-confirm-dialog {
+          background: #fff;
+          border-radius: 22px;
+          padding: 32px 36px;
+          max-width: 400px;
+          width: 90%;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .sr-confirm-icon-wrap {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #fef3e2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 16px;
+        }
+        .sr-warning-orange {
+          color: #e67e22;
+        }
+        .sr-confirm-dialog h4 {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 0 0 8px;
+        }
+        .sr-confirm-dialog p {
+          font-size: 13.5px;
+          color: var(--ink-soft);
+          line-height: 1.55;
+          margin: 0 0 22px;
+        }
+        .sr-confirm-actions {
+          display: flex;
+          gap: 10px;
+        }
+        .sr-confirm-btn {
+          flex: 1;
+          border: none;
+          padding: 12px 20px;
+          border-radius: 999px;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .sr-confirm-btn--cancel {
+          background: #f1f3f2;
+          color: var(--ink-soft);
+        }
+        .sr-confirm-btn--cancel:hover {
+          background: #e5e8e7;
+        }
+        .sr-confirm-btn--danger {
+          background: #e74c3c;
+          color: #fff;
+        }
+        .sr-confirm-btn--danger:hover {
+          background: #c0392b;
         }
       `}</style>
 

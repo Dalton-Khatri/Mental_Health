@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
+
+const uploadsDir = path.join(__dirname, '..', 'uploads'); // adjust if uploads/ isn't at server root
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const cors = require('cors');
 const express = require('express');
 const authRoutes = require('./routes/authRoutes');
