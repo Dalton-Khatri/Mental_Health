@@ -22,6 +22,8 @@ import {
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import Auth from "./Auth";
+import VerifyEmail from "./VerifyEmail";
+import ResetPassword from "./ResetPassword";
 import HomeView from "./components/HomeView";
 import InsightsView from "./components/InsightsView";
 import ActivitiesView from "./components/ActivitiesView";
@@ -767,6 +769,15 @@ export default function App() {
         return null;
     }
   };
+
+  const currentPath = window.location.pathname;
+
+  if (currentPath === "/verify-email") {
+    return <VerifyEmail />;
+  }
+  if (currentPath === "/reset-password") {
+    return <ResetPassword />;
+  }
 
   if (!token) {
     return <Auth onLoginSuccess={(u, t) => { setUser(u); setToken(t); }} />;
