@@ -2,31 +2,31 @@ HEAD 2 (CAUSE CLASSIFIER) TEST SET RESULTS
 ==================================================
 
 Best epoch: 3
-Val macro F1 at best epoch: 0.5195
+Val macro F1 at best epoch: 0.6195
 
-Test Macro F1:  0.5091
-Test Accuracy:  0.5456
+Test Macro F1:  0.6076
+Test Accuracy:  0.7100
 
 Classification Report:
                   precision    recall  f1-score   support
 
-       No reason       0.45      0.49      0.47        69
-   Bias or abuse       0.28      0.26      0.27        35
-Jobs and careers       0.60      0.67      0.63        63
-      Medication       0.56      0.48      0.51        63
-    Relationship       0.60      0.64      0.62       134
-      Alienation       0.57      0.53      0.55       140
+       No reason       0.51      0.36      0.42        92
+   Bias or abuse       0.29      0.40      0.34        35
+Jobs and careers       0.93      0.86      0.89       313
+      Medication       0.59      0.76      0.66       128
+    Relationship       0.75      0.82      0.78       251
+      Alienation       0.58      0.52      0.55       188
 
-        accuracy                           0.55       504
-       macro avg       0.51      0.51      0.51       504
-    weighted avg       0.54      0.55      0.54       504
+        accuracy                           0.71      1007
+       macro avg       0.61      0.62      0.61      1007
+    weighted avg       0.72      0.71      0.71      1007
 
 Confusion Matrix:
 Label order: ['No reason', 'Bias or abuse', 'Jobs and careers', 'Medication', 'Relationship', 'Alienation']
-     34      3      0      4     10     18
-      4      9      2      3      9      8
-      4      0     42      2      8      7
-      8      0      7     30     14      4
-      6      8     10      5     86     19
-     19     12      9     10     16     74
+     33      3      6     12     13     25
+      2     14      0      4      7      8
+      5      0    268     18     10     12
+      1      5      3     97      8     14
+      1     14      3     16    205     12
+     23     12      7     17     31     98
 
