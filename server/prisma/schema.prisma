@@ -13,18 +13,19 @@ generator client {
 }
 
 model User {
-  id                String      @id @default(uuid())
-  name              String
-  email             String      @unique
-  passwordHash      String
-  isVerified        Boolean     @default(false)
-  verifyCode        String?
-  verifyCodeExpiry  DateTime?
-  verifyAttempts    Int         @default(0)
-  resetToken        String?
-  resetTokenExpiry  DateTime?
-  createdAt         DateTime    @default(now())
-  screenings        Screening[]
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  isVerified   Boolean       @default(false)
+  verifyCode       String?
+  verifyCodeExpiry DateTime?
+  verifyAttempts   Int       @default(0)
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt    DateTime      @default(now())
+  screenings   Screening[]
+  assessments  Assessment[]
 }
 
 model Screening {
@@ -37,4 +38,33 @@ model Screening {
   causeLabel          String
   causeConfidence     Float
   createdAt           DateTime @default(now())
+}
+
+model Assessment {
+  id            String                @id @default(uuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id])
+  combinedAudioUrl String?
+  totalDuration Float
+  prediction    String?
+  confidence    Float?
+  transcript    String?
+  createdAt     DateTime              @default(now())
+  responses     AssessmentResponse[]
+}
+
+model AssessmentResponse {
+  id               String     @id @default(uuid())
+  assessmentId     String
+  assessment       Assessment @relation(fields: [assessmentId], references: [id])
+  questionId       String
+  category         String
+  questionText     String
+  audioUrl         String
+  duration         Float
+  timestamp        DateTime
+  hadFollowUp      Boolean    @default(false)
+  followUpText     String?
+  followUpAudioUrl String?
+  followUpDuration Float?
 }
