@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Mic, CheckCircle2, Circle, Star, Calendar, ChevronRight, Wind, Heart } from "lucide-react";
+import { Mic, CheckCircle2, Circle, Star, Calendar, ChevronRight, Wind, Heart, MessageSquare } from "lucide-react";
 
 export default function HomeView({ 
   user,
   notes, 
   onStartScreening, 
+  onStartConversation,
   focusTasks, 
   onToggleFocusTask, 
   onOpenModal 
@@ -162,10 +163,16 @@ export default function HomeView({
         <div className="sr-hero-content">
           <h1>Good morning, {user?.name || "User"}.</h1>
           <p>It's a brand new day. Let's take a moment to see how your voice reflects your inner world today.</p>
-          <button className="sr-hero-btn" onClick={onStartScreening} id="btn-start-new-screening">
-            <Mic size={16} />
-            <span>Start New Screening</span>
-          </button>
+          <div className="sr-hero-btn-group">
+            <button className="sr-hero-btn" onClick={onStartScreening} id="btn-start-new-screening">
+              <Mic size={16} />
+              <span>Start New Screening</span>
+            </button>
+            <button className="sr-hero-btn sr-hero-btn--secondary" onClick={onStartConversation} id="btn-start-reflection">
+              <MessageSquare size={16} />
+              <span>Start Reflection Session</span>
+            </button>
+          </div>
         </div>
       </div>
 
