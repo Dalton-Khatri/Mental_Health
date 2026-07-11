@@ -1,17 +1,20 @@
 import React, { useState } from "react";
-import { Heart, Mail, Lock, User, Loader2, CheckCircle2 } from "lucide-react";
+import { Heart, Mail, Lock, User, Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api/auth";
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
 export default function Auth({ onLoginSuccess }) {
-  const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot"
+  const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot" | "verify"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [pendingEmail, setPendingEmail] = useState(""); // email waiting on verification
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
 
   const resetFields = () => {
@@ -19,6 +22,7 @@ export default function Auth({ onLoginSuccess }) {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setCode("");
     setError("");
   };
 
@@ -54,6 +58,9 @@ export default function Auth({ onLoginSuccess }) {
     } else if (mode === "forgot") {
       endpoint = "/forgot-password";
       body = { email };
+    } else if (mode === "verify") {
+      endpoint = "/verify-code";
+      body = { email: pendingEmail, code };
     }
 
     try {
@@ -65,6 +72,15 @@ export default function Auth({ onLoginSuccess }) {
       const data = await res.json();
 
       if (!res.ok) {
+        // If login fails because the account isn't verified yet, send them
+        // straight to the code-entry screen instead of just showing an error.
+        if (mode === "login" && data.needsVerification) {
+          setPendingEmail(data.email || email);
+          setMode("verify");
+          setError("");
+          setInfoMessage("Your account isn't verified yet. Enter the code we sent to your email.");
+          return;
+        }
         throw new Error(data.error || "Something went wrong");
       }
 
@@ -73,16 +89,41 @@ export default function Auth({ onLoginSuccess }) {
         localStorage.setItem("user", JSON.stringify(data.user));
         onLoginSuccess(data.user, data.token);
       } else if (mode === "signup") {
-        setInfoMessage(data.message || "Account created. Please check your email to verify your account before logging in.");
+        setPendingEmail(email);
+        setMode("verify");
         resetFields();
+        setInfoMessage(data.message || "We sent a 6-digit code to your email.");
       } else if (mode === "forgot") {
         setInfoMessage(data.message || "If that email is registered, a reset link has been sent.");
         resetFields();
+      } else if (mode === "verify") {
+        setInfoMessage("Email verified! You can now log in.");
+        setTimeout(() => switchMode("login"), 1200);
       }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError("");
+    setResending(true);
+    try {
+      const res = await fetch(`${API_URL}/resend-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to resend code");
+      setInfoMessage(data.message || "A new code has been sent.");
+      setCode("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -103,7 +144,6 @@ export default function Auth({ onLoginSuccess }) {
           padding: 24px;
         }
 
-        /* ─── Floating Background Blobs ─── */
         .sr-auth-page::before,
         .sr-auth-page::after {
           content: '';
@@ -163,7 +203,6 @@ export default function Auth({ onLoginSuccess }) {
           to { transform: rotate(360deg); }
         }
 
-        /* ─── Auth Card ─── */
         .sr-auth-card {
           position: relative;
           z-index: 1;
@@ -179,7 +218,6 @@ export default function Auth({ onLoginSuccess }) {
           animation: sr-auth-fadeIn 0.5s ease both;
         }
 
-        /* ─── Brand Header ─── */
         .sr-auth-brand {
           display: flex;
           align-items: center;
@@ -213,7 +251,6 @@ export default function Auth({ onLoginSuccess }) {
           color: #636e72;
         }
 
-        /* ─── Heading ─── */
         .sr-auth-heading {
           font-size: 24px;
           font-weight: 700;
@@ -230,14 +267,12 @@ export default function Auth({ onLoginSuccess }) {
           line-height: 1.5;
         }
 
-        /* ─── Form ─── */
         .sr-auth-form {
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
 
-        /* ─── Input Group ─── */
         .sr-auth-input-group {
           position: relative;
           display: flex;
@@ -277,7 +312,28 @@ export default function Auth({ onLoginSuccess }) {
           box-shadow: 0 0 0 3px rgba(91, 154, 139, 0.1);
         }
 
-        /* ─── Password hint ─── */
+        .sr-auth-code-input {
+          width: 100%;
+          text-align: center;
+          letter-spacing: 8px;
+          font-size: 22px;
+          font-weight: 600;
+          padding: 14px 16px;
+          border-radius: 14px;
+          border: 1.5px solid transparent;
+          background: #f1f3f2;
+          color: #2d3436;
+          outline: none;
+          box-sizing: border-box;
+          font-family: 'Outfit', 'Nunito', sans-serif;
+          transition: all 0.25s ease;
+        }
+        .sr-auth-code-input:focus {
+          background: #fff;
+          border-color: #5b9a8b;
+          box-shadow: 0 0 0 3px rgba(91, 154, 139, 0.1);
+        }
+
         .sr-auth-hint {
           font-size: 12px;
           color: #95a5a6;
@@ -285,7 +341,6 @@ export default function Auth({ onLoginSuccess }) {
           line-height: 1.4;
         }
 
-        /* ─── Forgot password link ─── */
         .sr-auth-forgot-link {
           text-align: right;
           margin: -8px 0 0;
@@ -305,7 +360,6 @@ export default function Auth({ onLoginSuccess }) {
           text-decoration: underline;
         }
 
-        /* ─── Error Message ─── */
         .sr-auth-error {
           display: flex;
           align-items: center;
@@ -320,7 +374,6 @@ export default function Auth({ onLoginSuccess }) {
           animation: sr-auth-fadeIn 0.25s ease;
         }
 
-        /* ─── Info / Success Message ─── */
         .sr-auth-info {
           display: flex;
           align-items: flex-start;
@@ -335,7 +388,6 @@ export default function Auth({ onLoginSuccess }) {
           animation: sr-auth-fadeIn 0.25s ease;
         }
 
-        /* ─── Submit Button ─── */
         .sr-auth-submit {
           width: 100%;
           border: none;
@@ -371,7 +423,32 @@ export default function Auth({ onLoginSuccess }) {
           animation: sr-auth-spin 0.8s linear infinite;
         }
 
-        /* ─── Mode Toggle ─── */
+        .sr-auth-resend {
+          text-align: center;
+          margin-top: 4px;
+          font-size: 13px;
+          color: #636e72;
+        }
+        .sr-auth-resend button {
+          background: none;
+          border: none;
+          padding: 0;
+          font-family: inherit;
+          font-size: inherit;
+          color: #5b9a8b;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .sr-auth-resend button:hover {
+          color: #2b614f;
+          text-decoration: underline;
+        }
+        .sr-auth-resend button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          text-decoration: none;
+        }
+
         .sr-auth-toggle {
           text-align: center;
           margin-top: 20px;
@@ -395,7 +472,6 @@ export default function Auth({ onLoginSuccess }) {
           text-decoration: underline;
         }
 
-        /* ─── Decorative divider ─── */
         .sr-auth-divider {
           display: flex;
           align-items: center;
@@ -413,7 +489,6 @@ export default function Auth({ onLoginSuccess }) {
           background: rgba(91, 154, 139, 0.15);
         }
 
-        /* ─── Responsive ─── */
         @media (max-width: 480px) {
           .sr-auth-card {
             padding: 32px 24px 28px;
@@ -428,11 +503,9 @@ export default function Auth({ onLoginSuccess }) {
         }
       `}</style>
 
-      {/* Floating blob */}
       <div className="sr-auth-blob" />
 
       <div className="sr-auth-card">
-        {/* Brand */}
         <div className="sr-auth-brand">
           <div className="sr-auth-brand-icon">
             <Heart size={18} fill="#fff" stroke="none" />
@@ -443,19 +516,19 @@ export default function Auth({ onLoginSuccess }) {
           </div>
         </div>
 
-        {/* Heading */}
         <h2 className="sr-auth-heading">
           {mode === "login" && "Welcome back"}
           {mode === "signup" && "Create your account"}
           {mode === "forgot" && "Reset your password"}
+          {mode === "verify" && "Verify your email"}
         </h2>
         <p className="sr-auth-subheading">
           {mode === "login" && "Sign in to continue your wellness journey"}
           {mode === "signup" && "Start your path to better mental wellbeing"}
           {mode === "forgot" && "Enter your email and we'll send you a reset link"}
+          {mode === "verify" && `Enter the 6-digit code we sent to ${pendingEmail}`}
         </p>
 
-        {/* Success / Info message (replaces the form once shown for signup/forgot) */}
         {infoMessage && (
           <div className="sr-auth-info" role="status" style={{ marginBottom: 20 }}>
             <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -463,84 +536,23 @@ export default function Auth({ onLoginSuccess }) {
           </div>
         )}
 
-        {!infoMessage && (
+        {mode === "verify" ? (
           <form onSubmit={handleSubmit} className="sr-auth-form">
-            {mode === "signup" && (
-              <div className="sr-auth-input-group">
-                <User size={16} className="sr-auth-input-icon" />
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="sr-auth-input"
-                  id="input-auth-name"
-                  autoComplete="name"
-                />
-              </div>
-            )}
-
             <div className="sr-auth-input-group">
-              <Mail size={16} className="sr-auth-input-icon" />
+              <ShieldCheck size={16} className="sr-auth-input-icon" style={{ left: 16 }} />
               <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 required
-                className="sr-auth-input"
-                id="input-auth-email"
-                autoComplete="email"
+                className="sr-auth-code-input"
+                id="input-auth-code"
+                autoComplete="one-time-code"
               />
             </div>
-
-            {mode !== "forgot" && (
-              <>
-                <div className="sr-auth-input-group">
-                  <Lock size={16} className="sr-auth-input-icon" />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="sr-auth-input"
-                    id="input-auth-password"
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  />
-                </div>
-
-                {mode === "signup" && (
-                  <>
-                    <span className="sr-auth-hint">
-                      At least 8 characters, with a letter and a number
-                    </span>
-                    <div className="sr-auth-input-group">
-                      <Lock size={16} className="sr-auth-input-icon" />
-                      <input
-                        type="password"
-                        placeholder="Confirm password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="sr-auth-input"
-                        id="input-auth-confirm-password"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-            {mode === "login" && (
-              <div className="sr-auth-forgot-link">
-                <button type="button" onClick={() => switchMode("forgot")} id="btn-forgot-password">
-                  Forgot password?
-                </button>
-              </div>
-            )}
 
             {error && (
               <div className="sr-auth-error" role="alert">
@@ -550,54 +562,165 @@ export default function Auth({ onLoginSuccess }) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || code.length !== 6}
               className="sr-auth-submit"
-              id="btn-auth-submit"
+              id="btn-verify-code"
             >
               {loading ? (
                 <>
                   <Loader2 size={18} className="sr-auth-submit-spinner" />
-                  Please wait...
+                  Verifying...
                 </>
-              ) : mode === "login" ? (
-                "Sign in"
-              ) : mode === "signup" ? (
-                "Create account"
               ) : (
-                "Send reset link"
+                "Verify code"
               )}
             </button>
-          </form>
-        )}
 
-        {/* Divider + Mode Toggle (hidden while forgot-password info message is showing) */}
-        {mode !== "forgot" && (
-          <>
-            <div className="sr-auth-divider">or</div>
-            <p className="sr-auth-toggle">
-              {mode === "login" ? "Don't have an account? " : "Already have an account? "}
-              <button
-                type="button"
-                className="sr-auth-toggle-link"
-                onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-              >
-                {mode === "login" ? "Sign up" : "Sign in"}
+            <p className="sr-auth-resend">
+              Didn't get a code?{" "}
+              <button type="button" onClick={handleResendCode} disabled={resending} id="btn-resend-code">
+                {resending ? "Sending..." : "Resend code"}
               </button>
             </p>
-          </>
-        )}
+          </form>
+        ) : (
+          <>
+            {!infoMessage && (
+              <form onSubmit={handleSubmit} className="sr-auth-form">
+                {mode === "signup" && (
+                  <div className="sr-auth-input-group">
+                    <User size={16} className="sr-auth-input-icon" />
+                    <input
+                      type="text"
+                      placeholder="Full name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="sr-auth-input"
+                      id="input-auth-name"
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
 
-        {mode === "forgot" && (
-          <p className="sr-auth-toggle">
-            <button
-              type="button"
-              className="sr-auth-toggle-link"
-              onClick={() => switchMode("login")}
-              id="btn-back-to-login"
-            >
-              Back to sign in
-            </button>
-          </p>
+                <div className="sr-auth-input-group">
+                  <Mail size={16} className="sr-auth-input-icon" />
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="sr-auth-input"
+                    id="input-auth-email"
+                    autoComplete="email"
+                  />
+                </div>
+
+                {mode !== "forgot" && (
+                  <>
+                    <div className="sr-auth-input-group">
+                      <Lock size={16} className="sr-auth-input-icon" />
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="sr-auth-input"
+                        id="input-auth-password"
+                        autoComplete={mode === "login" ? "current-password" : "new-password"}
+                      />
+                    </div>
+
+                    {mode === "signup" && (
+                      <>
+                        <span className="sr-auth-hint">
+                          At least 8 characters, with a letter and a number
+                        </span>
+                        <div className="sr-auth-input-group">
+                          <Lock size={16} className="sr-auth-input-icon" />
+                          <input
+                            type="password"
+                            placeholder="Confirm password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            className="sr-auth-input"
+                            id="input-auth-confirm-password"
+                            autoComplete="new-password"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {mode === "login" && (
+                  <div className="sr-auth-forgot-link">
+                    <button type="button" onClick={() => switchMode("forgot")} id="btn-forgot-password">
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="sr-auth-error" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="sr-auth-submit"
+                  id="btn-auth-submit"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="sr-auth-submit-spinner" />
+                      Please wait...
+                    </>
+                  ) : mode === "login" ? (
+                    "Sign in"
+                  ) : mode === "signup" ? (
+                    "Create account"
+                  ) : (
+                    "Send reset link"
+                  )}
+                </button>
+              </form>
+            )}
+
+            {mode !== "forgot" && (
+              <>
+                <div className="sr-auth-divider">or</div>
+                <p className="sr-auth-toggle">
+                  {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+                  <button
+                    type="button"
+                    className="sr-auth-toggle-link"
+                    onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+                  >
+                    {mode === "login" ? "Sign up" : "Sign in"}
+                  </button>
+                </p>
+              </>
+            )}
+
+            {mode === "forgot" && (
+              <p className="sr-auth-toggle">
+                <button
+                  type="button"
+                  className="sr-auth-toggle-link"
+                  onClick={() => switchMode("login")}
+                  id="btn-back-to-login"
+                >
+                  Back to sign in
+                </button>
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
