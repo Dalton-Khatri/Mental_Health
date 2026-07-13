@@ -1,174 +1,303 @@
+"""
+app.py — SerenityScreen ML Backend
+
+FastAPI server that provides:
+  /api/transcribe   → Whisper speech-to-text
+  /api/screening    → Transcribe + predict condition & cause
+  /api/assessment   → Transcribe + full assessment (condition, cause, transcript)
+  /api/analyze-text → Analyze raw text (no audio) — used for weekly analysis
+  /api/health       → Health check
+
+The Phase 4 joint model (.pt file) is loaded ONCE at startup and stays
+in RAM. Each request just runs a forward pass (~50ms on CPU).
+"""
+
 import os
 import shutil
 import tempfile
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
-app = FastAPI(title="SerenityScreen Transcription Backend")
+# ── Global model holders ──
+whisper_model = None
+predictor = None  # MentalHealthPredictor instance
 
-# Configure CORS
+
+# ── Lifespan: load models at startup ──
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load all models when the server starts."""
+    global whisper_model, predictor
+
+    print("=" * 60)
+    print("  SerenityScreen ML Backend — Starting Up")
+    print("=" * 60)
+
+    # 1. Load Whisper
+    print("\n[Startup] Loading Whisper model...")
+    try:
+        import whisper
+        import torch as _torch
+        device = "cuda" if _torch.cuda.is_available() else "cpu"
+        whisper_model = whisper.load_model("base", device=device)
+        print(f"[Startup] OK Whisper loaded on {device}")
+    except Exception as e:
+        print(f"[Startup] WARNING Whisper failed to load: {e}")
+        print("[Startup]    Transcription will not be available.")
+
+    # 2. Load Phase 4 Joint Model
+    print("\n[Startup] Loading Phase 4 joint model...")
+    try:
+        from model import MentalHealthPredictor
+        predictor = MentalHealthPredictor()
+        print("[Startup] OK Phase 4 model loaded successfully")
+    except FileNotFoundError as e:
+        print(f"[Startup] WARNING {e}")
+        print("[Startup]    Condition/cause prediction will not be available.")
+    except Exception as e:
+        print(f"[Startup] WARNING Model loading failed: {e}")
+        print("[Startup]    Condition/cause prediction will not be available.")
+
+    print("\n" + "=" * 60)
+    print("  Server ready!")
+    print("=" * 60 + "\n")
+
+    yield  # Server runs here
+
+    # Cleanup on shutdown
+    print("\n[Shutdown] Cleaning up...")
+
+
+# ── App ──
+
+app = FastAPI(title="SerenityScreen ML Backend", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=["*"],  # Restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Programmatically add winget FFmpeg paths to PATH to ensure it works without shell restart
-winget_ffmpeg_path = r"C:\Users\acer\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin"
-if os.path.exists(winget_ffmpeg_path) and winget_ffmpeg_path not in os.environ["PATH"]:
-    os.environ["PATH"] += os.pathsep + winget_ffmpeg_path
 
-whisper_model = None
-ffmpeg_available = shutil.which("ffmpeg") is not None
+# ── Helper: transcribe audio file ──
 
-def get_whisper_model():
-    global whisper_model
+def transcribe_audio(file_path: str) -> str:
+    """Transcribe an audio file using Whisper. Returns transcript text."""
     if whisper_model is None:
-        if not ffmpeg_available:
-            print("[WARNING] ffmpeg is not installed or not in PATH.")
-            print("Whisper requires ffmpeg to process audio files.")
-            print("Please install ffmpeg (e.g. via 'scoop install ffmpeg', 'choco install ffmpeg', or downloading from ffmpeg.org) and add it to your PATH.")
-        
-        print("Loading Whisper 'base' model...")
-        import whisper
-        import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {device}")
-        whisper_model = whisper.load_model("base", device=device)
-        print("Whisper model loaded successfully!")
-    return whisper_model
+        raise HTTPException(status_code=503, detail="Whisper model not available")
+
+    result = whisper_model.transcribe(file_path, fp16=False)
+    return result.get("text", "").strip()
+
+
+def save_upload_to_temp(file: UploadFile) -> str:
+    """Save an uploaded file to a temp path. Caller must delete it."""
+    suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        return tmp.name
+
+
+# ── Endpoints ──
 
 @app.get("/api/health")
 def health_check():
+    """Health check — reports what models are loaded."""
     return {
         "status": "healthy",
-        "ffmpeg_installed": ffmpeg_available,
-        "model_loaded": whisper_model is not None
+        "whisper_loaded": whisper_model is not None,
+        "predictor_loaded": predictor is not None,
+        "ffmpeg_installed": shutil.which("ffmpeg") is not None,
     }
 
+
 @app.post("/api/transcribe")
-async def transcribe_audio(file: UploadFile = File(...)):
-    if not ffmpeg_available:
-        # Return a friendly error message if ffmpeg is missing
-        raise HTTPException(
-            status_code=500,
-            detail="ffmpeg is not installed on the server. Whisper requires ffmpeg to process audio files. Please install ffmpeg and restart the server."
-        )
-
-    # Save uploaded file to a temporary location
+async def transcribe_endpoint(file: UploadFile = File(...)):
+    """Transcribe audio to text using Whisper."""
+    temp_path = save_upload_to_temp(file)
     try:
-        suffix = os.path.splitext(file.filename)[1] or ".webm"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            temp_path = temp_file.name
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save uploaded audio: {str(e)}")
-
-    try:
-        # Debug audio loading & content
-        try:
-            import librosa
-            y, sr = librosa.load(temp_path, sr=16000)
-            rms = (y ** 2).mean() ** 0.5 if len(y) > 0 else 0
-            print(f"[DEBUG AUDIO] Loaded successfully via librosa: {len(y)} samples, SR={sr}, RMS={rms:.6f}")
-            if rms < 0.0005:
-                print("[DEBUG AUDIO] WARNING: The recorded audio seems to be completely silent.")
-        except Exception as audio_err:
-            print(f"[DEBUG AUDIO] Failed to decode audio file: {audio_err}")
-
-        # Load and run Whisper model
-        model = get_whisper_model()
-        print(f"Transcribing audio file: {temp_path}")
-        result = model.transcribe(temp_path, fp16=False)
-        transcript = result.get("text", "").strip()
-        print(f"Transcription result: {transcript}")
+        transcript = transcribe_audio(temp_path)
         return {"transcript": transcript}
     except Exception as e:
-        print(f"Error during transcription: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
-    finally:
-        # Clean up temporary file
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception as e:
-                print(f"Failed to remove temp file {temp_path}: {e}")
-
-@app.post("/api/assessment")
-async def analyze_assessment(file: UploadFile = File(...)):
-    if not ffmpeg_available:
-        raise HTTPException(
-            status_code=500,
-            detail="ffmpeg is not installed on the server. Whisper requires ffmpeg to process audio files. Please install ffmpeg and restart the server."
-        )
-
-    try:
-        suffix = os.path.splitext(file.filename)[1] or ".webm"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            temp_path = temp_file.name
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save uploaded audio: {str(e)}")
-
-    try:
-        model = get_whisper_model()
-        print(f"Transcribing assessment audio file: {temp_path}")
-        result = model.transcribe(temp_path, fp16=False)
-        transcript = result.get("text", "").strip()
-        print(f"Transcription result: {transcript}")
-
-        from analysis_service import get_audio_analysis_service
-        analysis_service = get_audio_analysis_service()
-        analysis_results = analysis_service.analyze_assessment(temp_path)
-
-        return {
-            "transcript": transcript,
-            "prediction": analysis_results["prediction"],
-            "confidence": analysis_results["confidence"]
-        }
-    except Exception as e:
-        print(f"Error during assessment analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Assessment analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
     finally:
         if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception as e:
-                print(f"Failed to remove temp file {temp_path}: {e}")
+            os.remove(temp_path)
+
 
 @app.post("/api/screening")
-async def analyze_screening(file: UploadFile = File(...)):
-    try:
-        suffix = os.path.splitext(file.filename)[1] or ".webm"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-            temp_path = temp_file.name
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save uploaded audio: {str(e)}")
+async def screening_endpoint(file: UploadFile = File(...)):
+    """
+    Quick screening: transcribe audio → predict condition & cause.
 
+    Called by the Node.js server when a user does a quick voice screening.
+    Returns the format that screeningRoutes.js expects.
+    """
+    temp_path = save_upload_to_temp(file)
     try:
-        from analysis_service import get_audio_analysis_service
-        analysis_service = get_audio_analysis_service()
-        analysis_results = analysis_service.analyze_screening(temp_path)
+        # Step 1: Transcribe
+        transcript = transcribe_audio(temp_path)
 
-        return {
-            "conditionLabel": analysis_results["conditionLabel"],
-            "conditionConfidence": analysis_results["conditionConfidence"],
-            "causeLabel": analysis_results["causeLabel"],
-            "causeConfidence": analysis_results["causeConfidence"]
-        }
+        # Step 2: Predict (if model is loaded)
+        if predictor is not None and transcript:
+            result = predictor.predict(transcript)
+            return {
+                "conditionLabel": result["condition"],
+                "conditionConfidence": result["condition_confidence"],
+                "causeLabel": result["cause"],
+                "causeConfidence": result["cause_confidence"],
+                "conditionScores": result["condition_scores"],
+                "causeScores": result["cause_scores"],
+                "transcript": transcript,
+            }
+        else:
+            # Model not loaded — return transcript only with defaults
+            return {
+                "conditionLabel": "Normal",
+                "conditionConfidence": 0.0,
+                "causeLabel": "No reason",
+                "causeConfidence": 0.0,
+                "transcript": transcript,
+                "warning": "ML model not loaded — returning defaults",
+            }
     except Exception as e:
-        print(f"Error during screening analysis: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Screening analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Screening failed: {e}")
     finally:
         if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception as e:
-                print(f"Failed to remove temp file {temp_path}: {e}")
+            os.remove(temp_path)
+
+
+@app.post("/api/assessment")
+async def assessment_endpoint(file: UploadFile = File(...)):
+    """
+    Full assessment: transcribe audio → predict condition & cause.
+
+    Called by the Node.js server when a user completes a voice reflection
+    session (ConversationView). Returns the format assessmentRoutes.js expects.
+    """
+    temp_path = save_upload_to_temp(file)
+    try:
+        # Step 1: Transcribe
+        transcript = transcribe_audio(temp_path)
+
+        # Step 2: Predict
+        if predictor is not None and transcript:
+            result = predictor.predict(transcript)
+            return {
+                "transcript": transcript,
+                "prediction": result["condition"],
+                "confidence": result["condition_confidence"],
+                "conditionLabel": result["condition"],
+                "conditionConfidence": result["condition_confidence"],
+                "conditionScores": result["condition_scores"],
+                "causeLabel": result["cause"],
+                "causeConfidence": result["cause_confidence"],
+                "causeScores": result["cause_scores"],
+                # Phase 6 placeholder — will be filled when fusion model is ready
+                "depressionPrediction": None,
+                "depressionConfidence": None,
+            }
+        else:
+            return {
+                "transcript": transcript,
+                "prediction": "Normal",
+                "confidence": 0.0,
+                "conditionLabel": "Normal",
+                "conditionConfidence": 0.0,
+                "causeLabel": "No reason",
+                "causeConfidence": 0.0,
+                "depressionPrediction": None,
+                "depressionConfidence": None,
+                "warning": "ML model not loaded — returning defaults",
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assessment failed: {e}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+# ── Text-only analysis (for weekly analysis) ──
+
+class TextAnalysisRequest(BaseModel):
+    """Request body for /api/analyze-text."""
+    texts: list[str]
+
+
+@app.post("/api/analyze-text")
+async def analyze_text_endpoint(req: TextAnalysisRequest):
+    """
+    Analyze one or more text strings (no audio).
+
+    Used by the Node.js server's weekly analysis route: it collects
+    all transcripts from the past 7 days and sends them here for
+    batch classification. Returns per-text predictions + aggregated summary.
+    """
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="ML model not loaded")
+
+    if not req.texts:
+        return {"results": [], "summary": {}}
+
+    # Predict each text
+    results = []
+    condition_counts = {}
+    cause_counts = {}
+
+    for text in req.texts:
+        if not text or not text.strip():
+            results.append(None)
+            continue
+
+        pred = predictor.predict(text)
+        results.append(pred)
+
+        # Aggregate
+        cond = pred["condition"]
+        cause = pred["cause"]
+        condition_counts[cond] = condition_counts.get(cond, 0) + 1
+        cause_counts[cause] = cause_counts.get(cause, 0) + 1
+
+    # Build summary
+    total = sum(condition_counts.values())
+    dominant_condition = max(condition_counts, key=condition_counts.get) if condition_counts else "Normal"
+    dominant_cause = max(cause_counts, key=cause_counts.get) if cause_counts else "No reason"
+
+    # Risk level based on dominant condition
+    risk_map = {
+        "Normal": "low",
+        "Stress": "moderate",
+        "Anxiety": "moderate",
+        "Depression": "high",
+        "Suicidal": "critical",
+    }
+
+    summary = {
+        "totalAnalyzed": total,
+        "dominantCondition": dominant_condition,
+        "dominantCause": dominant_cause,
+        "riskLevel": risk_map.get(dominant_condition, "unknown"),
+        "conditionDistribution": {
+            k: {"count": v, "percentage": round(100 * v / total, 1)}
+            for k, v in condition_counts.items()
+        },
+        "causeDistribution": {
+            k: {"count": v, "percentage": round(100 * v / total, 1)}
+            for k, v in cause_counts.items()
+        },
+    }
+
+    return {"results": results, "summary": summary}
+
+
+# ── Run ──
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
