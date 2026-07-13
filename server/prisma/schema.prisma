@@ -37,6 +37,7 @@ model Screening {
   conditionConfidence Float
   causeLabel          String
   causeConfidence     Float
+  transcript          String?
   createdAt           DateTime @default(now())
 }
 

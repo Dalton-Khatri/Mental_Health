@@ -31,6 +31,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
   let condConfidence = conditionConfidence ? parseFloat(conditionConfidence) : 0.88;
   let cLabel = causeLabel || 'None';
   let cConfidence = causeConfidence ? parseFloat(causeConfidence) : 0.90;
+  let transcript = null;
 
   // Query the Python service to analyze the screening audio
   try {
@@ -50,6 +51,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
       condConfidence = pyData.conditionConfidence != null ? parseFloat(pyData.conditionConfidence) : condConfidence;
       cLabel = pyData.causeLabel || cLabel;
       cConfidence = pyData.causeConfidence != null ? parseFloat(pyData.causeConfidence) : cConfidence;
+      transcript = pyData.transcript || null;
     } else {
       console.error('Python screening service returned an error:', await pyRes.text());
     }
@@ -65,7 +67,8 @@ router.post('/', upload.single('audio'), async (req, res) => {
         conditionLabel: condLabel,
         conditionConfidence: condConfidence,
         causeLabel: cLabel,
-        causeConfidence: cConfidence
+        causeConfidence: cConfidence,
+        transcript: transcript
       }
     });
 

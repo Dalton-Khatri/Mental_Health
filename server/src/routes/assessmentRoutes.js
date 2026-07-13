@@ -165,6 +165,15 @@ router.get('/', async (req, res) => {
         totalDuration: true,
         prediction: true,
         confidence: true,
+        transcript: true,
+        conditionLabel: true,
+        conditionConfidence: true,
+        conditionScores: true,
+        causeLabel: true,
+        causeConfidence: true,
+        causeScores: true,
+        depressionPrediction: true,
+        depressionConfidence: true,
         createdAt: true
       }
     });
