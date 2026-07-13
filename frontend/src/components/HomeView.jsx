@@ -8,7 +8,8 @@ export default function HomeView({
   onStartConversation,
   focusTasks, 
   onToggleFocusTask, 
-  onOpenModal 
+  onOpenModal,
+  weeklyAnalysis
 }) {
   const [timeframe, setTimeframe] = useState("7days");
 
@@ -281,6 +282,62 @@ export default function HomeView({
           </div>
         </div>
       </div>
+
+      {/* ─── AI Diagnostics & Weekly Insights ─── */}
+      {weeklyAnalysis && weeklyAnalysis.totalSessions > 0 && (
+        <div className="sr-dashboard-card sr-weekly-insights-card" style={{ marginTop: "24px", padding: "24px" }}>
+          <div className="sr-card-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>🧠 Dynamic AI Weekly Diagnostics</h3>
+            <span style={{
+              background: 
+                weeklyAnalysis.riskLevel === "critical" ? "rgba(183,28,28,0.12)" :
+                weeklyAnalysis.riskLevel === "high" ? "rgba(244,67,54,0.12)" :
+                weeklyAnalysis.riskLevel === "moderate" ? "rgba(255,152,0,0.12)" : "rgba(76,175,80,0.12)",
+              color: 
+                weeklyAnalysis.riskLevel === "critical" ? "#b71c1c" :
+                weeklyAnalysis.riskLevel === "high" ? "#f44336" :
+                weeklyAnalysis.riskLevel === "moderate" ? "#ff9800" : "#4caf50",
+              padding: "4px 12px",
+              borderRadius: "16px",
+              fontSize: "12px",
+              fontWeight: 600,
+              textTransform: "uppercase"
+            }}>
+              {weeklyAnalysis.riskLevel} Risk
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+            <div style={{ background: "rgba(128,128,128,0.04)", padding: "16px", borderRadius: "10px", borderLeft: "3px solid var(--accent)" }}>
+              <span style={{ fontSize: "11px", color: "var(--ink-faint)", display: "block", textTransform: "uppercase", fontWeight: 500 }}>Dominant Condition</span>
+              <span style={{ fontSize: "20px", fontWeight: 700, color: "var(--accent)", marginTop: "4px", display: "block" }}>{weeklyAnalysis.dominantCondition}</span>
+            </div>
+
+            <div style={{ background: "rgba(128,128,128,0.04)", padding: "16px", borderRadius: "10px", borderLeft: "3px solid #7c4dff" }}>
+              <span style={{ fontSize: "11px", color: "var(--ink-faint)", display: "block", textTransform: "uppercase", fontWeight: 500 }}>Primary Trigger</span>
+              <span style={{ fontSize: "20px", fontWeight: 700, color: "#7c4dff", marginTop: "4px", display: "block" }}>{weeklyAnalysis.dominantCause}</span>
+            </div>
+
+            <div style={{ background: "rgba(128,128,128,0.04)", padding: "16px", borderRadius: "10px", borderLeft: "3px solid #00bcd4" }}>
+              <span style={{ fontSize: "11px", color: "var(--ink-faint)", display: "block", textTransform: "uppercase", fontWeight: 500 }}>Total Reflection Time</span>
+              <span style={{ fontSize: "20px", fontWeight: 700, color: "#00bcd4", marginTop: "4px", display: "block" }}>
+                {Math.round(weeklyAnalysis.totalDuration / 60)} mins
+              </span>
+            </div>
+          </div>
+
+          <div style={{ background: "rgba(91,154,139,0.05)", padding: "20px", borderRadius: "12px" }}>
+            <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", fontWeight: 600, color: "var(--accent)" }}>Clinical Recommendations & Insights</h4>
+            <ul style={{ margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {weeklyAnalysis.insights.map((insight, idx) => (
+                <li key={idx} style={{ fontSize: "13px", color: "var(--ink)", lineHeight: 1.5 }}>
+                  {insight}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

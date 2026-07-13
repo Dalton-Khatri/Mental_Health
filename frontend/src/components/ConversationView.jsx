@@ -467,7 +467,33 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
 
   // RENDER: Results step
   if (step === "results") {
-    const confidencePct = results?.confidence ? Math.round(results.confidence * 100) : 88;
+    const condLabel = results?.conditionLabel || results?.prediction || "Normal";
+    const condConf = results?.conditionConfidence || results?.confidence || 0;
+    const causeLabel = results?.causeLabel || "—";
+    const causeConf = results?.causeConfidence || 0;
+    const depLabel = results?.depressionPrediction || null;
+    const depConf = results?.depressionConfidence || null;
+    const depRisk = results?.depressionRisk || null;
+
+    // Color mappings for conditions
+    const condColors = {
+      "Normal": { bg: "rgba(76,175,80,0.12)", color: "#4caf50", icon: "🟢" },
+      "Stress": { bg: "rgba(255,152,0,0.12)", color: "#ff9800", icon: "🟡" },
+      "Anxiety": { bg: "rgba(255,152,0,0.12)", color: "#ff9800", icon: "🟡" },
+      "Depression": { bg: "rgba(244,67,54,0.12)", color: "#f44336", icon: "🔴" },
+      "Suicidal": { bg: "rgba(183,28,28,0.15)", color: "#b71c1c", icon: "🔴" },
+    };
+    const condStyle = condColors[condLabel] || condColors["Normal"];
+
+    // Depression risk colors
+    const riskColors = {
+      "minimal": { bg: "rgba(76,175,80,0.12)", color: "#4caf50", text: "Minimal Risk" },
+      "low": { bg: "rgba(139,195,74,0.12)", color: "#8bc34a", text: "Low Risk" },
+      "moderate": { bg: "rgba(255,152,0,0.12)", color: "#ff9800", text: "Moderate Risk" },
+      "high": { bg: "rgba(244,67,54,0.12)", color: "#f44336", text: "High Risk" },
+    };
+    const riskStyle = riskColors[depRisk] || riskColors["minimal"];
+
     return (
       <div className="sr-conversation-container sr-fade-in">
         <div className="sr-conversation-card">
@@ -475,24 +501,132 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
             <div className="sr-success-icon-wrap">
               <CheckCircle size={32} className="sr-checked-green" />
             </div>
-            <h2>Session Completed Successfully</h2>
-            <p>Thank you for completing your Voice Reflection session. Your wellness parameters have been updated.</p>
+            <h2>Assessment Complete</h2>
+            <p>Your voice reflection has been analyzed using our multimodal AI models.</p>
           </div>
 
           <div className="sr-insights-dashboard">
+            {/* ── Condition Card ── */}
+            <div className="sr-convo-metric-card" style={{ borderLeft: `3px solid ${condStyle.color}` }}>
+              <h4>{condStyle.icon} Detected Condition</h4>
+              <div className="sr-metric-row">
+                <span className="sr-metric-label">Primary:</span>
+                <span className="sr-metric-val" style={{ color: condStyle.color, fontWeight: 600 }}>
+                  {condLabel}
+                </span>
+              </div>
+              <div className="sr-metric-row">
+                <span className="sr-metric-label">Confidence:</span>
+                <span className="sr-metric-val">{Math.round(condConf * 100)}%</span>
+              </div>
+              {results?.conditionScores && (
+                <div className="sr-score-breakdown">
+                  {Object.entries(results.conditionScores)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([label, score]) => (
+                    <div key={label} className="sr-score-bar-row">
+                      <span className="sr-score-bar-label">{label}</span>
+                      <div className="sr-score-bar-track">
+                        <div
+                          className="sr-score-bar-fill"
+                          style={{
+                            width: `${Math.round(score * 100)}%`,
+                            background: label === condLabel ? condStyle.color : "rgba(128,128,128,0.3)"
+                          }}
+                        />
+                      </div>
+                      <span className="sr-score-bar-pct">{Math.round(score * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Cause Card ── */}
+            <div className="sr-convo-metric-card" style={{ borderLeft: "3px solid #7c4dff" }}>
+              <h4>🔍 Identified Trigger</h4>
+              <div className="sr-metric-row">
+                <span className="sr-metric-label">Primary Cause:</span>
+                <span className="sr-metric-val" style={{ color: "#7c4dff", fontWeight: 600 }}>
+                  {causeLabel}
+                </span>
+              </div>
+              <div className="sr-metric-row">
+                <span className="sr-metric-label">Confidence:</span>
+                <span className="sr-metric-val">{Math.round(causeConf * 100)}%</span>
+              </div>
+              {results?.causeScores && (
+                <div className="sr-score-breakdown">
+                  {Object.entries(results.causeScores)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([label, score]) => (
+                    <div key={label} className="sr-score-bar-row">
+                      <span className="sr-score-bar-label">{label}</span>
+                      <div className="sr-score-bar-track">
+                        <div
+                          className="sr-score-bar-fill"
+                          style={{
+                            width: `${Math.round(score * 100)}%`,
+                            background: label === causeLabel ? "#7c4dff" : "rgba(128,128,128,0.3)"
+                          }}
+                        />
+                      </div>
+                      <span className="sr-score-bar-pct">{Math.round(score * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Depression Fusion Card ── */}
+            <div className="sr-convo-metric-card" style={{ borderLeft: `3px solid ${riskStyle.color}` }}>
+              <h4>🧠 Depression Screening</h4>
+              {depLabel ? (
+                <>
+                  <div className="sr-metric-row">
+                    <span className="sr-metric-label">Result:</span>
+                    <span className="sr-metric-val" style={{ color: riskStyle.color, fontWeight: 600 }}>
+                      {depLabel}
+                    </span>
+                  </div>
+                  <div className="sr-metric-row">
+                    <span className="sr-metric-label">Risk Level:</span>
+                    <span className="sr-metric-val" style={{
+                      background: riskStyle.bg,
+                      color: riskStyle.color,
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                      fontSize: "0.85em",
+                      fontWeight: 600
+                    }}>
+                      {riskStyle.text}
+                    </span>
+                  </div>
+                  <div className="sr-metric-row">
+                    <span className="sr-metric-label">Confidence:</span>
+                    <span className="sr-metric-val">{Math.round(depConf * 100)}%</span>
+                  </div>
+                  <div style={{ fontSize: "0.78em", color: "var(--ink-faint)", marginTop: 8, lineHeight: 1.5 }}>
+                    This result is based on a fusion of text and audio analysis. It is not a clinical diagnosis.
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: "0.85em", color: "var(--ink-faint)", padding: "8px 0" }}>
+                  Depression screening requires audio analysis. Result will appear when audio processing is available.
+                </div>
+              )}
+            </div>
+
+            {/* ── Summary Row ── */}
             <div className="sr-convo-metric-card">
-              <h4>Wellness Indicators</h4>
-              <div className="sr-metric-row">
-                <span className="sr-metric-label">Mood Assessment:</span>
-                <span className="sr-metric-val">{results?.prediction || "Normal"}</span>
-              </div>
-              <div className="sr-metric-row">
-                <span className="sr-metric-label">Vocal Confidence:</span>
-                <span className="sr-metric-val">{confidencePct}%</span>
-              </div>
+              <h4>📋 Session Summary</h4>
               <div className="sr-metric-row">
                 <span className="sr-metric-label">Total Speaking Time:</span>
                 <span className="sr-metric-val">{formatTime(results?.totalDuration || 0)}</span>
+              </div>
+              <div className="sr-metric-row">
+                <span className="sr-metric-label">Questions Answered:</span>
+                <span className="sr-metric-val">{recordings.filter(r => r !== null).length} / {QUESTIONS.length}</span>
               </div>
             </div>
 
