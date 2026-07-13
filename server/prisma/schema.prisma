@@ -46,12 +46,25 @@ model Assessment {
   user          User                  @relation(fields: [userId], references: [id])
   combinedAudioUrl String?
   totalDuration Float
+  // Legacy field — kept for backward compatibility
   prediction    String?
   confidence    Float?
   transcript    String?
+  // Condition (Head 1) results from Phase 4 model
+  conditionLabel      String?
+  conditionConfidence Float?
+  conditionScores     Json?
+  // Cause (Head 2) results from Phase 4 model
+  causeLabel          String?
+  causeConfidence     Float?
+  causeScores         Json?
+  // Depression (Phase 6 fusion) — placeholder for now
+  depressionPrediction String?
+  depressionConfidence Float?
   createdAt     DateTime              @default(now())
   responses     AssessmentResponse[]
 }
+
 
 model AssessmentResponse {
   id               String     @id @default(uuid())

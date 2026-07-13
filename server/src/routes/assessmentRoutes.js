@@ -59,6 +59,14 @@ router.post(
       let transcript = null;
       let prediction = null;
       let confidence = null;
+      let conditionLabel = null;
+      let conditionConfidence = null;
+      let conditionScores = null;
+      let causeLabel = null;
+      let causeConfidence = null;
+      let causeScores = null;
+      let depressionPrediction = null;
+      let depressionConfidence = null;
 
       if (combinedAudioFile) {
         try {
@@ -77,6 +85,14 @@ router.post(
             transcript = pyData.transcript || null;
             prediction = pyData.prediction || null;
             confidence = pyData.confidence != null ? parseFloat(pyData.confidence) : null;
+            conditionLabel = pyData.conditionLabel || null;
+            conditionConfidence = pyData.conditionConfidence != null ? parseFloat(pyData.conditionConfidence) : null;
+            conditionScores = pyData.conditionScores || null;
+            causeLabel = pyData.causeLabel || null;
+            causeConfidence = pyData.causeConfidence != null ? parseFloat(pyData.causeConfidence) : null;
+            causeScores = pyData.causeScores || null;
+            depressionPrediction = pyData.depressionPrediction || null;
+            depressionConfidence = pyData.depressionConfidence != null ? parseFloat(pyData.depressionConfidence) : null;
           } else {
             console.error('Python assessment service returned an error:', await pyRes.text());
           }
@@ -84,6 +100,7 @@ router.post(
           console.error('Failed to reach Python assessment service:', err.message);
         }
       }
+
 
       // Build the AssessmentResponse rows, pairing each question with its audio file and (optional) follow-up
       let followUpIndex = 0;
@@ -114,6 +131,14 @@ router.post(
           prediction,
           confidence,
           transcript,
+          conditionLabel,
+          conditionConfidence,
+          conditionScores,
+          causeLabel,
+          causeConfidence,
+          causeScores,
+          depressionPrediction,
+          depressionConfidence,
           responses: {
             create: responseData
           }
