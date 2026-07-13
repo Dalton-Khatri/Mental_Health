@@ -4,3 +4,17 @@ __pycache__/
 *.pyc
 myvenv
 .env
+
+# Model checkpoints (too large for git, ~420MB each)
+*.pt
+backend/model_artifacts/*.pkl
+backend/model_artifacts/*.bin
+
+# Uploads
+server/uploads/
+
+# Node modules
+node_modules/
+
+# Phase 4 input zip
+phase4_kaggle_input.zip
