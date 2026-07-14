@@ -94,3 +94,63 @@ model AssessmentResponse {
   followUpDuration Float?
 }
 
+
+model EmergencyContact {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  phone     String
+  relation  String?
+  isPrimary Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model WeeklyAnalysis {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  weekStart DateTime
+  weekEnd   DateTime
+
+  entryCount   Int      // screenings + assessments counted this week
+  avgScores    Json     // { "Anxiety": 0.31, "Depression": 0.44, "Normal": 0.10, "Suicidal": 0.15 }
+  peakScores   Json     // same shape, but max seen this week (per class)
+  peakEntryId  String?  // which Screening/Assessment produced the peak
+  peakEntryType String? // "screening" | "assessment"
+
+  dominantCondition String?  // highest-scoring class this week
+  trend             String?  // "improving" | "worsening" | "stable" vs prior week
+
+  thresholdCrossed Boolean @default(false)
+  crossedClasses   Json?   // which classes crossed, and at what score
+
+  keywordSummary Json?     // top recurring keywords/phrases this week
+  status         String    @default("pending") // pending | processed | reviewed
+
+  alertEvents AlertEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+}
+
+model AlertEvent {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  weeklyAnalysisId String?
+  weeklyAnalysis   WeeklyAnalysis? @relation(fields: [weeklyAnalysisId], references: [id])
+
+  triggerSource String   // "screening" | "assessment" | "weekly"
+  triggerRefId  String?  // id of the record that caused it
+  conditionLabel String
+  score           Float
+
+  contactNotified String?  // mock: which contact "would be" notified
+  notifiedAt      DateTime?
+  resolved        Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+}
