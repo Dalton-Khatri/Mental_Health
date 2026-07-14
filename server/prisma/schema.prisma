@@ -26,6 +26,9 @@ model User {
   createdAt    DateTime      @default(now())
   screenings   Screening[]
   assessments  Assessment[]
+  emergencyContacts EmergencyContact[]
+  weeklyAnalysis WeeklyAnalyis[]
+  alertEvents AlertEvents[]
 }
 
 model Screening {
@@ -39,6 +42,11 @@ model Screening {
   causeConfidence     Float
   transcript          String?
   createdAt           DateTime @default(now())
+  conditionScores     Json
+  causeScores         Json
+  Keywords            Json
+
+  @@index([userId, createdAt])
 }
 
 model Assessment {
@@ -64,6 +72,9 @@ model Assessment {
   depressionConfidence Float?
   createdAt     DateTime              @default(now())
   responses     AssessmentResponse[]
+  keywords      Json
+
+  @@index([userId,createdAt])
 }
 
 
@@ -82,3 +93,4 @@ model AssessmentResponse {
   followUpAudioUrl String?
   followUpDuration Float?
 }
+
