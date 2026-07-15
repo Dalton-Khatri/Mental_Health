@@ -26,6 +26,9 @@ model User {
   createdAt    DateTime      @default(now())
   screenings   Screening[]
   assessments  Assessment[]
+  emergencyContacts EmergencyContact[]
+  weeklyAnalysis WeeklyAnalyis[]
+  alertEvents AlertEvents[]
 }
 
 model Screening {
@@ -37,7 +40,13 @@ model Screening {
   conditionConfidence Float
   causeLabel          String
   causeConfidence     Float
+  transcript          String?
   createdAt           DateTime @default(now())
+  conditionScores     Json
+  causeScores         Json
+  Keywords            Json
+
+  @@index([userId, createdAt])
 }
 
 model Assessment {
@@ -46,12 +55,28 @@ model Assessment {
   user          User                  @relation(fields: [userId], references: [id])
   combinedAudioUrl String?
   totalDuration Float
+  // Legacy field — kept for backward compatibility
   prediction    String?
   confidence    Float?
   transcript    String?
+  // Condition (Head 1) results from Phase 4 model
+  conditionLabel      String?
+  conditionConfidence Float?
+  conditionScores     Json?
+  // Cause (Head 2) results from Phase 4 model
+  causeLabel          String?
+  causeConfidence     Float?
+  causeScores         Json?
+  // Depression (Phase 6 fusion) — placeholder for now
+  depressionPrediction String?
+  depressionConfidence Float?
   createdAt     DateTime              @default(now())
   responses     AssessmentResponse[]
+  keywords      Json
+
+  @@index([userId,createdAt])
 }
+
 
 model AssessmentResponse {
   id               String     @id @default(uuid())
@@ -67,4 +92,65 @@ model AssessmentResponse {
   followUpText     String?
   followUpAudioUrl String?
   followUpDuration Float?
+}
+
+
+model EmergencyContact {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  phone     String
+  relation  String?
+  isPrimary Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model WeeklyAnalysis {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  weekStart DateTime
+  weekEnd   DateTime
+
+  entryCount   Int      // screenings + assessments counted this week
+  avgScores    Json     // { "Anxiety": 0.31, "Depression": 0.44, "Normal": 0.10, "Suicidal": 0.15 }
+  peakScores   Json     // same shape, but max seen this week (per class)
+  peakEntryId  String?  // which Screening/Assessment produced the peak
+  peakEntryType String? // "screening" | "assessment"
+
+  dominantCondition String?  // highest-scoring class this week
+  trend             String?  // "improving" | "worsening" | "stable" vs prior week
+
+  thresholdCrossed Boolean @default(false)
+  crossedClasses   Json?   // which classes crossed, and at what score
+
+  keywordSummary Json?     // top recurring keywords/phrases this week
+  status         String    @default("pending") // pending | processed | reviewed
+
+  alertEvents AlertEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+}
+
+model AlertEvent {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  weeklyAnalysisId String?
+  weeklyAnalysis   WeeklyAnalysis? @relation(fields: [weeklyAnalysisId], references: [id])
+
+  triggerSource String   // "screening" | "assessment" | "weekly"
+  triggerRefId  String?  // id of the record that caused it
+  conditionLabel String
+  score           Float
+
+  contactNotified String?  // mock: which contact "would be" notified
+  notifiedAt      DateTime?
+  resolved        Boolean  @default(false)
+
+  createdAt DateTime @default(now())
 }

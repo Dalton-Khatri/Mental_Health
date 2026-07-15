@@ -1,0 +1,56 @@
+PHASE 4: JOINT TWO-HEAD TEST RESULTS
+==================================================
+
+Best epoch: 8
+Combined macro F1: 0.7077
+
+HEAD 1 (CONDITION CLASSIFIER)
+Macro F1: 0.8078
+Accuracy: 0.8359
+Baseline (Phase 1): 0.8272  Delta: -0.0194
+
+              precision    recall  f1-score   support
+
+      Normal       0.96      0.94      0.95      1938
+  Depression       0.80      0.71      0.75      1424
+     Anxiety       0.80      0.87      0.83       532
+      Stress       0.75      0.72      0.74       185
+    Suicidal       0.72      0.83      0.77      1119
+
+    accuracy                           0.84      5198
+   macro avg       0.81      0.81      0.81      5198
+weighted avg       0.84      0.84      0.84      5198
+
+Confusion Matrix (['Normal', 'Depression', 'Anxiety', 'Stress', 'Suicidal']):
+   1815     45     30     17     31
+     34   1007     52     10    321
+     13     38    462     15      4
+     14      8     24    134      5
+     14    167      9      2    927
+
+
+HEAD 2 (CAUSE CLASSIFIER)
+Macro F1: 0.6159
+Accuracy: 0.7180
+Baseline (Phase 2): 0.5091  Delta: +0.1068
+
+                  precision    recall  f1-score   support
+
+       No reason       0.58      0.38      0.46        91
+   Bias or abuse       0.32      0.29      0.30        35
+Jobs and careers       0.88      0.91      0.90       313
+      Medication       0.71      0.70      0.71       128
+    Relationship       0.79      0.73      0.75       252
+      Alienation       0.51      0.64      0.57       188
+
+        accuracy                           0.72      1007
+       macro avg       0.63      0.61      0.62      1007
+    weighted avg       0.72      0.72      0.72      1007
+
+Confusion Matrix (['No reason', 'Bias or abuse', 'Jobs and careers', 'Medication', 'Relationship', 'Alienation']):
+     35      1      9      9      7     30
+      1     10      0      2      7     15
+      2      2    284      3      4     18
+      2      0      8     90     11     17
+      7      8      8     12    183     34
+     13     10     12     11     21    121

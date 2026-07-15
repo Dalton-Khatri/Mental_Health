@@ -1,0 +1,16 @@
+# SerenityScreen ML Backend Dependencies
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# ML / Model
+torch>=2.0.0
+transformers>=4.30.0
+openai-whisper>=20230918
+
+# Audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# Utilities
+python-dotenv>=1.0.0

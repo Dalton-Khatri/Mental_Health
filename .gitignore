@@ -5,3 +5,27 @@ __pycache__/
 myvenv
 processed/
 extended daic-woz/
+.env
+
+# Model checkpoints (too large for git, ~420MB each)
+*.pt
+backend/model_artifacts/best_joint_checkpoint.pt
+backend/model_artifacts/text_mlp_checkpoint.pt
+backend/model_artifacts/audio_mlp_checkpoint.pt
+backend/model_artifacts/fusion_mlp_checkpoint.pt
+backend/model_artifacts/*.pkl
+backend/model_artifacts/*.bin
+
+# Uploads
+server/uploads/
+
+# Node modules
+node_modules/
+
+# Phase 4 input zip
+phase4_kaggle_input.zip
+
+# Binary executables
+backend/ffmpeg.exe
+backend/ffmpeg
+

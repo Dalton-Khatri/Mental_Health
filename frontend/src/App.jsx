@@ -410,23 +410,37 @@ function NoteModal({ note, onClose, onRename }) {
           )}
         </div>
 
-        {/* Wellness score display */}
-        {note.score !== undefined && (
-          <div className="sr-score-section">
-            <div className="sr-score-ring">
-              <svg viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(91,154,139,0.15)" strokeWidth="6" />
-                <circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" strokeWidth="6"
-                  strokeDasharray={`${(note.score / 100) * 213.6} 213.6`}
-                  strokeLinecap="round" transform="rotate(-90 40 40)"
-                  style={{ transition: "stroke-dasharray 1s ease" }}
-                />
-              </svg>
-              <span className="sr-score-value">{note.score}%</span>
+        {/* Wellness score & AI predictions display */}
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", margin: "20px 0", justifyContent: "center" }}>
+          {note.score !== undefined && (
+            <div className="sr-score-section" style={{ flex: "1 1 120px", margin: 0 }}>
+              <div className="sr-score-ring">
+                <svg viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(91,154,139,0.15)" strokeWidth="6" />
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" strokeWidth="6"
+                    strokeDasharray={`${(note.score / 100) * 213.6} 213.6`}
+                    strokeLinecap="round" transform="rotate(-90 40 40)"
+                    style={{ transition: "stroke-dasharray 1s ease" }}
+                  />
+                </svg>
+                <span className="sr-score-value">{note.score}%</span>
+              </div>
+              <span className="sr-score-label">Confidence Score</span>
             </div>
-            <span className="sr-score-label">Wellness Score</span>
+          )}
+
+          {/* Condition and Cause triggers info */}
+          <div style={{ flex: "2 1 200px", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", textAlign: "left", paddingLeft: "10px" }}>
+            <div style={{ background: "rgba(128,128,128,0.06)", padding: "8px 12px", borderRadius: "8px" }}>
+              <span style={{ fontSize: "11px", color: "var(--ink-faint)", display: "block", textTransform: "uppercase" }}>Detected Condition</span>
+              <span style={{ fontWeight: 600, color: "var(--accent)", fontSize: "15px" }}>{note.conditionLabel || "Normal"}</span>
+            </div>
+            <div style={{ background: "rgba(128,128,128,0.06)", padding: "8px 12px", borderRadius: "8px" }}>
+              <span style={{ fontSize: "11px", color: "var(--ink-faint)", display: "block", textTransform: "uppercase" }}>Trigger Cause</span>
+              <span style={{ fontWeight: 600, color: "#7c4dff", fontSize: "15px" }}>{note.causeLabel || "No reason"}</span>
+            </div>
           </div>
-        )}
+        </div>
 
         <div className="sr-transcript">
           <div className="sr-transcript-label">Transcript</div>
@@ -459,29 +473,76 @@ export default function App() {
 
   // Notes/Screenings State
   const [notes, setNotes] = useState([]);
+  const [weeklyAnalysis, setWeeklyAnalysis] = useState(null);
+
+  const fetchWeeklyAnalysis = useCallback(() => {
+    if (!token) return;
+    fetch(`${SERVER_API}/weekly-analysis`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch weekly analysis");
+        return res.json();
+      })
+      .then((data) => setWeeklyAnalysis(data))
+      .catch((err) => console.error("Weekly analysis error:", err));
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${SERVER_API}/screenings`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        const mapped = data.map((s) => ({
+
+    // Fetch both screenings (quick voice screening) and assessments (guided reflection sessions)
+    Promise.all([
+      fetch(`${SERVER_API}/screenings`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json()),
+      fetch(`${SERVER_API}/assessments`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json())
+    ])
+      .then(([screeningsData, assessmentsData]) => {
+        const mappedScreenings = Array.isArray(screeningsData) ? screeningsData.map((s) => ({
           id: s.id,
-          title: `Wellness check — ${new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
-          url: s.audioUrl,
+          title: `Voice Screening — ${new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
+          url: s.audioUrl ? `http://localhost:5000${s.audioUrl}` : "",
           peaks: Array(60).fill(0.2),
           duration: 0,
           mood: 3,
           score: s.conditionConfidence ? Math.round(s.conditionConfidence * 100) : undefined,
+          conditionLabel: s.conditionLabel || "Normal",
+          conditionConfidence: s.conditionConfidence || 0,
+          causeLabel: s.causeLabel || "No reason",
+          causeConfidence: s.causeConfidence || 0,
           createdAt: new Date(s.createdAt),
           transcript: s.transcript || "",
-        }));
-        setNotes(mapped);
+          type: "screening"
+        })) : [];
+
+        const mappedAssessments = Array.isArray(assessmentsData) ? assessmentsData.map((a) => ({
+          id: a.id,
+          title: `Voice Reflection — ${new Date(a.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
+          url: a.combinedAudioUrl ? `http://localhost:5000${a.combinedAudioUrl}` : "",
+          peaks: Array(60).fill(0.2),
+          duration: a.totalDuration || 0,
+          mood: 3,
+          score: a.conditionConfidence ? Math.round(a.conditionConfidence * 100) : undefined,
+          conditionLabel: a.conditionLabel || a.prediction || "Normal",
+          conditionConfidence: a.conditionConfidence || a.confidence || 0,
+          causeLabel: a.causeLabel || "No reason",
+          causeConfidence: a.causeConfidence || 0,
+          depressionPrediction: a.depressionPrediction,
+          depressionConfidence: a.depressionConfidence,
+          createdAt: new Date(a.createdAt),
+          transcript: a.transcript || "",
+          type: "assessment"
+        })) : [];
+
+        // Combine and sort by date descending
+        const combined = [...mappedScreenings, ...mappedAssessments].sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+        );
+        setNotes(combined);
       })
-      .catch((err) => console.error("Failed to load screenings:", err));
-  }, [token]);
+      .catch((err) => console.error("Failed to load wellness history:", err));
+
+    fetchWeeklyAnalysis();
+  }, [token, fetchWeeklyAnalysis]);
 
   // Today's Focus Checklist State (Persisted in LocalStorage)
   const [focusTasks, setFocusTasks] = useState(() => {
@@ -634,60 +695,62 @@ export default function App() {
     setNotes((prev) => [newNote, ...prev]);
     setSelectedMood(null);
 
-    // Send audio blob to Python FastAPI backend for Whisper transcription
-    const formData = new FormData();
+    // Send audio blob directly to the Node.js server screenings endpoint.
+    // The server will forward it to the Python ML server, perform transcription,
+    // analyze condition/cause, save to the database, and return the complete record.
+    const saveFormData = new FormData();
     const fileExtension = mimeTypeRef.current.includes("webm") ? "webm" : mimeTypeRef.current.includes("ogg") ? "ogg" : "mp4";
-    formData.append("file", blob, `checkin.${fileExtension}`);
+    saveFormData.append("audio", blob, `checkin.${fileExtension}`);
 
-    /* FUTURE BACKEND CONNECTION NOTE:
-       When integrating the database, this POST request will hit the `/api/screenings` endpoint 
-       with the audio file and mood metadata. The backend should save the audio, transcribe it, 
-       calculate the acoustic sentiment Wellness Score, save it in SQLite, and return the complete object:
-       
-       formData.append("mood", selectedMood || 3);
-       fetch("http://localhost:8000/api/screenings", { ... })
-    */
-    fetch("http://localhost:8000/api/transcribe", {
+    fetch(`${SERVER_API}/screenings`, {
       method: "POST",
-      body: formData,
+      headers: { Authorization: `Bearer ${token}` },
+      body: saveFormData,
     })
       .then((res) => {
         if (!res.ok) {
-          return res.json().then((err) => {
-            throw new Error(err.detail || "Server error");
+          return res.text().then((text) => {
+            throw new Error(text || "Server error");
           });
         }
         return res.json();
       })
       .then((data) => {
-        // Calculate a realistic simulated wellness score in the frontend (since backend calculations are deferred)
-        const moodWeight = newNote.mood ? newNote.mood * 8 : 24;
-        const mockScore = Math.min(100, Math.max(45, 55 + moodWeight + Math.floor(Math.random() * 8)));
-
+        // Update the note state with the real database screening record
         setNotes((prev) =>
-          prev.map((n) => (n.id === noteId ? { ...n, transcript: data.transcript, score: mockScore } : n))
+          prev.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  id: data.id,
+                  url: data.audioUrl ? `http://localhost:5000${data.audioUrl}` : "",
+                  transcript: data.transcript,
+                  conditionLabel: data.conditionLabel,
+                  conditionConfidence: data.conditionConfidence,
+                  causeLabel: data.causeLabel,
+                  causeConfidence: data.causeConfidence,
+                  score: data.conditionConfidence ? Math.round(data.conditionConfidence * 100) : 80,
+                }
+              : n
+          )
         );
 
         // Unlock the "Review Voice Trends" checklist item
         setFocusTasks((prev) => ({ ...prev, trends: false }));
-
-        const saveFormData = new FormData();
-        saveFormData.append("audio", blob, `checkin.${fileExtension}`);
-        saveFormData.append("conditionLabel", "pending");
-        saveFormData.append("conditionConfidence", "0");
-        saveFormData.append("causeLabel", "pending");
-        saveFormData.append("causeConfidence", "0");
-
-        fetch(`${SERVER_API}/screenings`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: saveFormData,
-        }).catch((err) => console.error("Failed to save screening to database:", err));
+        fetchWeeklyAnalysis();
       })
       .catch((err) => {
-        console.error("Transcription error:", err);
+        console.error("Screening upload error:", err);
         setNotes((prev) =>
-          prev.map((n) => (n.id === noteId ? { ...n, transcript: `[Transcription failed: ${err.message}]`, score: 50 } : n))
+          prev.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  transcript: `[Analysis failed: ${err.message}]`,
+                  score: 50,
+                }
+              : n
+          )
         );
       })
       .finally(() => {
@@ -754,6 +817,7 @@ export default function App() {
             focusTasks={focusTasks}
             onToggleFocusTask={toggleFocusTask}
             onOpenModal={handleOpenModal}
+            weeklyAnalysis={weeklyAnalysis}
           />
         );
       case "conversation":
@@ -762,7 +826,35 @@ export default function App() {
             user={user}
             token={token}
             SERVER_API={SERVER_API}
-            onSessionComplete={() => setCurrentTab("home")}
+            onSessionComplete={() => {
+              // Refresh screenings
+              fetch(`${SERVER_API}/screenings`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+                .then((res) => res.json())
+                .then((data) => {
+                  const mapped = data.map((s) => ({
+                    id: s.id,
+                    title: `Wellness check — ${new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
+                    url: s.audioUrl,
+                    peaks: Array(60).fill(0.2),
+                    duration: 0,
+                    mood: 3,
+                    score: s.conditionConfidence ? Math.round(s.conditionConfidence * 100) : undefined,
+                    conditionLabel: s.conditionLabel || "Normal",
+                    conditionConfidence: s.conditionConfidence || 0,
+                    causeLabel: s.causeLabel || "No reason",
+                    causeConfidence: s.causeConfidence || 0,
+                    createdAt: new Date(s.createdAt),
+                    transcript: s.transcript || "",
+                  }));
+                  setNotes(mapped);
+                })
+                .catch((err) => console.error("Failed to refresh screenings:", err));
+
+              fetchWeeklyAnalysis();
+              setCurrentTab("home");
+            }}
           />
         );
       case "insights":
