@@ -26,7 +26,7 @@ import shutil
 import tempfile
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -243,13 +243,13 @@ async def screening_endpoint(file: UploadFile = File(...)):
 
 
 @app.post("/api/assessment")
-async def assessment_endpoint(file: UploadFile = File(...)):
+async def assessment_endpoint(file: UploadFile = File(...), transcript: str = Form(None)):
     """
     Full assessment: transcribe -> condition + cause + depression fusion.
     Called by the Node.js server's assessmentRoutes.js.
 
     This is the main endpoint that runs the COMPLETE pipeline:
-      Audio -> Whisper -> transcript
+      Audio -> Whisper -> transcript (or use pre-built transcript if provided)
       Transcript -> Phase 4 -> condition + cause
       Transcript -> text embedding -> Text MLP -> 128-dim features
       Audio -> wav2vec2 -> audio embedding -> Audio MLP -> 128-dim features
@@ -257,8 +257,12 @@ async def assessment_endpoint(file: UploadFile = File(...)):
     """
     temp_path = save_upload_to_temp(file)
     try:
-        # Step 1: Transcribe
-        transcript = transcribe_audio(temp_path)
+        # Step 1: Transcribe (skip Whisper if pre-built transcript was provided)
+        if transcript and transcript.strip():
+            print("[Assessment] Using pre-built transcript (skipping Whisper)")
+            transcript = transcript.strip()
+        else:
+            transcript = transcribe_audio(temp_path)
 
         if predictor is None or not transcript:
             return {

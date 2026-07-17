@@ -17,6 +17,40 @@ const upload = multer({ storage });
 // Every route below requires a valid login token
 router.use(authMiddleware);
 
+// TRANSCRIBE a single recording (proxy to Python Whisper service)
+// Used during the adaptive interview to get per-question transcripts
+router.post('/transcribe', upload.single('audio'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No audio file uploaded' });
+  }
+  try {
+    const fs = require('fs');
+    const pythonForm = new FormData();
+    const fileBuffer = fs.readFileSync(req.file.path);
+    pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
+
+    const pyRes = await fetch('http://localhost:8000/api/transcribe', {
+      method: 'POST',
+      body: pythonForm
+    });
+
+    if (pyRes.ok) {
+      const data = await pyRes.json();
+      res.json(data);
+    } else {
+      const errText = await pyRes.text();
+      console.error('Python transcribe service error:', errText);
+      res.status(502).json({ error: 'Transcription service failed' });
+    }
+  } catch (err) {
+    console.error('Failed to reach Python transcribe service:', err.message);
+    res.status(502).json({ error: 'Transcription service unreachable' });
+  } finally {
+    // Clean up temp file (not needed after forwarding)
+    try { require('fs').unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+  }
+});
+
 // SAVE a completed assessment
 // Expects multipart/form-data with:
 //   - "combinedAudio": one file (the full merged recording, sent to Python for transcription/prediction)
@@ -74,6 +108,12 @@ router.post(
           const pythonForm = new FormData();
           const fileBuffer = fs.readFileSync(combinedAudioFile.path);
           pythonForm.append('file', new Blob([fileBuffer]), combinedAudioFile.originalname);
+
+          // Forward pre-built transcript if available (avoids re-running Whisper)
+          const preBuiltTranscript = req.body.preBuiltTranscript;
+          if (preBuiltTranscript) {
+            pythonForm.append('transcript', preBuiltTranscript);
+          }
 
           const pyRes = await fetch('http://localhost:8000/api/assessment', {
             method: 'POST',

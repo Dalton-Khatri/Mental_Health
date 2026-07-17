@@ -1,42 +1,146 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Square, Play, Pause, AlertTriangle, ArrowRight, ArrowLeft, RefreshCw, CheckCircle, Volume2, Wind } from "lucide-react";
 
-// List of questions for the session in order
-const QUESTIONS = [
-  {
-    id: "q1",
-    category: "weekly_overview",
-    text: "How has your week been so far? Walk me through what a typical day has looked like recently."
+// A topic keyword map + question bank for the 8 PHQ-8 topics.
+const TOPICS = {
+  stress: {
+    category: "stress",
+    keywords: ["stress", "stressed", "overwhelmed", "pressure", "anxious", "anxiety", "worry", "worried", "tension"],
+    questions: [
+      "What's been stressing you out recently?",
+      "How has that affected your daily life?",
+      "Can you tell me about what's been causing you the most pressure or worry lately?"
+    ]
   },
-  {
-    id: "q2",
-    category: "emotional_state",
-    text: "How have you been feeling emotionally over the past few days?"
+  sleep: {
+    category: "sleep",
+    keywords: ["sleep", "insomnia", "waking up", "rest", "tired", "asleep", "night", "nights", "awake"],
+    questions: [
+      "How have you been sleeping lately?",
+      "Do you wake up feeling rested?",
+      "How is your sleep pattern lately, and have you had trouble falling or staying asleep?"
+    ]
   },
-  {
-    id: "q3",
-    category: "challenges",
-    text: "What's been the biggest challenge or source of stress in your life recently?"
+  energy: {
+    category: "energy",
+    keywords: ["energy", "tired", "exhausted", "fatigue", "drained", "lethargic", "weary"],
+    questions: [
+      "How has your energy been lately?",
+      "Do you feel physically or mentally drained most days?",
+      "Tell me about your energy levels throughout the day."
+    ]
   },
-  {
-    id: "q4",
-    category: "support_system",
-    text: "Who are the people you usually turn to when you need support?"
+  concentration: {
+    category: "concentration",
+    keywords: ["focus", "concentrate", "distracted", "concentration", "attention", "memory", "decisions"],
+    questions: [
+      "How has your focus been lately?",
+      "Have you found yourself easily distracted or having trouble making decisions?",
+      "How easily can you concentrate on tasks like reading, working, or watching something?"
+    ]
   },
-  {
-    id: "q5",
-    category: "open_reflection",
-    text: "Is there anything else you've been thinking about lately that you'd like to talk about?"
+  appetite: {
+    category: "appetite",
+    keywords: ["appetite", "eating", "hungry", "weight", "food", "meals", "overeating"],
+    questions: [
+      "How has your appetite been recently?",
+      "Have you noticed changes in your eating habits, like eating too much or too little?",
+      "How is your relationship with food or appetite lately?"
+    ]
+  },
+  interest: {
+    category: "interest",
+    keywords: ["interest", "enjoy", "hobbies", "motivation", "pleasure", "bored", "care", "excited"],
+    questions: [
+      "Have you been enjoying the things you normally do?",
+      "Have you felt a lack of interest or pleasure in your usual hobbies and activities?",
+      "How has your motivation been to do things you typically look forward to?"
+    ]
+  },
+  failure: {
+    category: "failure",
+    keywords: ["failure", "letting down", "worthless", "guilty", "disappointed", "shame", "blame", "myself"],
+    questions: [
+      "How do you feel about how things are going for you lately?",
+      "Have you been feeling down on yourself or like a failure?",
+      "Tell me how you've been feeling about yourself and your self-worth recently."
+    ]
+  },
+  moving: {
+    category: "moving",
+    keywords: ["restless", "fidgety", "slow", "sluggish", "pacing", "agitated", "hyper"],
+    questions: [
+      "Have you noticed feeling more restless or slowed down lately?",
+      "Have you been moving or speaking so slowly that other people could have noticed, or the opposite—feeling very restless or fidgety?",
+      "Describe how your physical movements or pace have felt over the last few days."
+    ]
   }
-];
+};
+
+const TOTAL_QUESTIONS = 5;
+
+// Pure topic selection logic
+const pickNextTopic = (askedTopics, transcript) => {
+  const text = (transcript || "").toLowerCase();
+  
+  // Find all matched topics based on keywords
+  const detected = [];
+  for (const [topicKey, topicData] of Object.entries(TOPICS)) {
+    const hasKeyword = topicData.keywords.some(kw => text.includes(kw));
+    if (hasKeyword) {
+      detected.push(topicKey);
+    }
+  }
+  
+  // Filter out already asked topics
+  const candidates = detected.filter(topic => !askedTopics.includes(topic));
+  
+  if (candidates.length > 0) {
+    return candidates[0]; // follow what the user just brought up
+  } else {
+    // nothing new detected -> diversify
+    const remaining = Object.keys(TOPICS).filter(topic => !askedTopics.includes(topic));
+    if (remaining.length > 0) {
+      const randIdx = Math.floor(Math.random() * remaining.length);
+      return remaining[randIdx];
+    }
+  }
+  return "stress"; // fallback
+};
+
+// Pick an unused question template from that topic's bank
+const getQuestionFromTopic = (topicKey, activeQuestions) => {
+  const topicData = TOPICS[topicKey];
+  if (!topicData) return { category: "stress", text: "How has your week been so far?" };
+  
+  const usedTexts = activeQuestions.map(q => q.text);
+  const unusedQuestions = topicData.questions.filter(qText => !usedTexts.includes(qText));
+  
+  return {
+    category: topicKey,
+    text: unusedQuestions.length > 0 ? unusedQuestions[0] : topicData.questions[0]
+  };
+};
 
 export default function ConversationView({ user, token, SERVER_API, onSessionComplete }) {
   // Navigation & step states: "intro", "interview", "processing", "results"
   const [step, setStep] = useState("intro");
   const [currentIdx, setCurrentIdx] = useState(0);
   
+  // Active questions generated dynamically
+  const [activeQuestions, setActiveQuestions] = useState([
+    {
+      id: "q1",
+      category: "stress",
+      text: "How has your week been so far? Walk me through what a typical day has looked like recently."
+    }
+  ]);
+  const [askedTopics, setAskedTopics] = useState(["stress"]);
+  const [transcripts, setTranscripts] = useState(Array(TOTAL_QUESTIONS).fill(""));
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  
   // Recordings data: array of { blob, url, duration }
-  const [recordings, setRecordings] = useState(Array(QUESTIONS.length).fill(null));
+  const [recordings, setRecordings] = useState(Array(TOTAL_QUESTIONS).fill(null));
   
   // Active recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -220,22 +324,109 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
 
   const handleConfirmReRecord = () => {
     setShowConfirm(false);
-    // Clear existing recording for this question
+    // Clear existing recording and transcript for this question
     setRecordings((prev) => {
       const next = [...prev];
       next[currentIdx] = null;
+      return next;
+    });
+    setTranscripts((prev) => {
+      const next = [...prev];
+      next[currentIdx] = "";
       return next;
     });
     handleStartRecording();
   };
 
   // Navigation between questions
-  const handleNext = () => {
-    if (currentIdx < QUESTIONS.length - 1) {
-      setCurrentIdx((prev) => prev + 1);
-      setElapsed(0);
-    } else {
-      handleSubmitSession();
+  const handleNext = async () => {
+    // If we already have the transcript for this question (e.g. user went back and is going forward again without re-recording)
+    if (transcripts[currentIdx]) {
+      if (currentIdx < TOTAL_QUESTIONS - 1) {
+        setCurrentIdx((prev) => prev + 1);
+        setElapsed(0);
+      } else {
+        handleSubmitSession(transcripts);
+      }
+      return;
+    }
+
+    const activeRec = recordings[currentIdx];
+    if (!activeRec) return;
+
+    setIsTranscribing(true);
+    setErrorMsg("");
+
+    try {
+      // 1. Transcribe the audio via Node.js proxy route
+      const formData = new FormData();
+      const fileExt = activeRec.blob.type.includes("mp4") ? "mp4" : activeRec.blob.type.includes("ogg") ? "ogg" : "webm";
+      formData.append("audio", activeRec.blob, `q_${currentIdx + 1}.${fileExt}`);
+
+      const res = await fetch(`${SERVER_API}/assessments/transcribe`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text() || "Transcription failed");
+      }
+
+      const data = await res.json();
+      const transcriptText = data.transcript || "";
+
+      // Save transcript
+      const updatedTranscripts = [...transcripts];
+      updatedTranscripts[currentIdx] = transcriptText;
+      setTranscripts(updatedTranscripts);
+
+      if (currentIdx < TOTAL_QUESTIONS - 1) {
+        // Pick the next topic
+        const currentAskedTopics = activeQuestions.slice(0, currentIdx + 1).map(q => q.category);
+        const nextTopic = pickNextTopic(currentAskedTopics, transcriptText);
+        const nextQuestion = getQuestionFromTopic(nextTopic, activeQuestions.slice(0, currentIdx + 1));
+
+        const newQuestionObj = {
+          id: `q${currentIdx + 2}`,
+          category: nextTopic,
+          text: nextQuestion.text
+        };
+
+        // Update activeQuestions and askedTopics
+        const nextActiveQuestions = [...activeQuestions.slice(0, currentIdx + 1), newQuestionObj];
+        setActiveQuestions(nextActiveQuestions);
+        setAskedTopics(nextActiveQuestions.map(q => q.category));
+
+        // Clear subsequent recordings/transcripts since the question chain changed
+        setRecordings((prev) => {
+          const next = [...prev];
+          for (let i = currentIdx + 1; i < TOTAL_QUESTIONS; i++) {
+            next[i] = null;
+          }
+          return next;
+        });
+        setTranscripts((prev) => {
+          const next = [...prev];
+          for (let i = currentIdx + 1; i < TOTAL_QUESTIONS; i++) {
+            next[i] = "";
+          }
+          return next;
+        });
+
+        setCurrentIdx((prev) => prev + 1);
+        setElapsed(0);
+      } else {
+        // On the final question (Q5), we submit
+        handleSubmitSession(updatedTranscripts);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Failed to analyze your response. Please try again.");
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
@@ -338,7 +529,7 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
   };
 
   // SUBMIT recordings to Express server
-  const handleSubmitSession = async () => {
+  const handleSubmitSession = async (currentTranscripts = transcripts) => {
     setStep("processing");
     try {
       const combinedBlob = await combineRecordings();
@@ -348,16 +539,24 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
       // Combined audio
       formData.append("combinedAudio", combinedBlob, "reflection_session_combined.wav");
       
+      // Combined transcript built from all 5 responses
+      const combinedTranscript = currentTranscripts
+        .map(t => (t || "").trim())
+        .filter(Boolean)
+        .join(" ");
+      formData.append("preBuiltTranscript", combinedTranscript);
+      
       // Question audios and metadata list
       const metadata = [];
       recordings.forEach((rec, idx) => {
         const fileExt = rec.blob.type.includes("mp4") ? "mp4" : rec.blob.type.includes("ogg") ? "ogg" : "webm";
         formData.append("questionAudios", rec.blob, `q_${idx + 1}.${fileExt}`);
         
+        const activeQ = activeQuestions[idx] || { id: `q${idx + 1}`, category: "unknown", text: "" };
         metadata.push({
-          questionId: QUESTIONS[idx].id,
-          category: QUESTIONS[idx].category,
-          questionText: QUESTIONS[idx].text,
+          questionId: activeQ.id,
+          category: activeQ.category,
+          questionText: activeQ.text,
           duration: rec.duration,
           timestamp: new Date().toISOString(),
           hadFollowUp: false
@@ -626,7 +825,7 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
               </div>
               <div className="sr-metric-row">
                 <span className="sr-metric-label">Questions Answered:</span>
-                <span className="sr-metric-val">{recordings.filter(r => r !== null).length} / {QUESTIONS.length}</span>
+                <span className="sr-metric-val">{recordings.filter(r => r !== null).length} / {TOTAL_QUESTIONS}</span>
               </div>
             </div>
 
@@ -642,7 +841,7 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
             <div className="sr-recordings-review">
               <h4>Review Your Responses</h4>
               <div className="sr-audio-review-list">
-                {QUESTIONS.map((q, idx) => {
+                {activeQuestions.map((q, idx) => {
                   const rec = recordings[idx];
                   return (
                     <div className="sr-audio-review-item" key={q.id}>
@@ -672,7 +871,7 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
   }
 
   // RENDER: Guided interview steps
-  const activeQ = QUESTIONS[currentIdx];
+  const activeQ = activeQuestions[currentIdx] || { category: "unknown", text: "" };
   const activeRec = recordings[currentIdx];
 
   return (
@@ -681,20 +880,20 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
         {/* Progress Bar & Header */}
         <div className="sr-interview-header">
           <div className="sr-progress-info">
-            <span className="sr-progress-fraction">Question {currentIdx + 1} of {QUESTIONS.length}</span>
-            <span className="sr-progress-estimate">Est. remaining: ~{Math.max(0, 4 - currentIdx)} mins</span>
+            <span className="sr-progress-fraction">Question {currentIdx + 1} of {TOTAL_QUESTIONS}</span>
+            <span className="sr-progress-estimate">Est. remaining: ~{Math.max(0, TOTAL_QUESTIONS - 1 - currentIdx)} mins</span>
           </div>
           <div className="sr-progress-track">
             <div 
               className="sr-progress-bar" 
-              style={{ width: `${((currentIdx + 1) / QUESTIONS.length) * 100}%` }} 
+              style={{ width: `${((currentIdx + 1) / TOTAL_QUESTIONS) * 100}%` }} 
             />
           </div>
         </div>
 
         {/* Current Question Display */}
         <div className="sr-active-question-section">
-          <span className="sr-question-tag">{activeQ.category.replace("_", " ")}</span>
+          <span className="sr-question-tag">{activeQ.category ? activeQ.category.replace("_", " ") : ""}</span>
           <h3>{activeQ.text}</h3>
         </div>
 
@@ -706,7 +905,17 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
         )}
 
         {/* Recording Interface Display */}
-        <div className="sr-recording-workspace">
+        {isTranscribing ? (
+          <div className="sr-recording-workspace sr-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 280 }}>
+            <div className="sr-processing-spinner" style={{ marginBottom: 16 }}>
+              <div className="sr-spinner-ring" />
+              <Volume2 className="sr-spinner-mic" size={24} style={{ color: "var(--primary)" }} />
+            </div>
+            <h4 style={{ fontWeight: 600, color: "var(--ink)" }}>Analyzing your answer...</h4>
+            <p style={{ fontSize: "0.85em", color: "var(--ink-soft)", marginTop: 4 }}>Transcribing your speech to select the next topic</p>
+          </div>
+        ) : (
+          <div className="sr-recording-workspace">
           {/* Status Indicator */}
           <div className="sr-recording-status">
             <div className={`sr-status-dot ${isRecording && !isPaused ? "sr-status-dot--recording" : isPaused ? "sr-status-dot--paused" : ""}`} />
@@ -782,6 +991,7 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
             )}
           </div>
         </div>
+      )}
 
         {/* Step Navigation Bar */}
         <div className="sr-step-navigation">
@@ -799,11 +1009,11 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
           <button 
             className="sr-nav-step-btn sr-nav-step-btn--next" 
             onClick={handleNext} 
-            disabled={!activeRec || isRecording}
+            disabled={!activeRec || isRecording || isTranscribing}
             aria-label="Proceed to next question"
             id="btn-next-question"
           >
-            <span>{currentIdx === QUESTIONS.length - 1 ? "Submit Reflections" : "Next Question"}</span>
+            <span>{currentIdx === TOTAL_QUESTIONS - 1 ? "Submit Reflections" : "Next Question"}</span>
             <ArrowRight size={16} />
           </button>
         </div>
