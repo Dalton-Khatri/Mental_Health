@@ -18,10 +18,10 @@ function generateCode() {
 
 // SIGNUP
 router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, emergencyPhone, emergencyContactName } = req.body;
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Missing name, email, or password' });
+  if (!name || !email || !password || !emergencyPhone) {
+    return res.status(400).json({ error: 'Missing required fields: name, email, password, or emergency contact number' });
   }
 
   if (!PASSWORD_RULE.test(password)) {
@@ -46,7 +46,15 @@ router.post('/signup', async (req, res) => {
         verifyCode,
         verifyCodeExpiry,
         verifyAttempts: 0,
-        isVerified: false
+        isVerified: false,
+        emergencyContacts: {
+          create: {
+            name: emergencyContactName || `${name}'s Emergency Contact`,
+            phone: emergencyPhone.trim(),
+            relation: 'Emergency Contact',
+            isPrimary: true
+          }
+        }
       }
     });
 
@@ -162,7 +170,10 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { emergencyContacts: true }
+    });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -180,7 +191,12 @@ router.post('/login', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emergencyContacts: user.emergencyContacts
+      }
     });
   } catch (err) {
     console.error(err);

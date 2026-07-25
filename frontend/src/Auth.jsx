@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart, Mail, Lock, User, Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Heart, Mail, Lock, User, Loader2, CheckCircle2, ShieldCheck, Phone, FileText, X, ShieldAlert, Check } from "lucide-react";
 
 const API_URL = "http://localhost:5000/api/auth";
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -8,8 +8,11 @@ export default function Auth({ onLoginSuccess }) {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot" | "verify"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [code, setCode] = useState("");
   const [pendingEmail, setPendingEmail] = useState(""); // email waiting on verification
   const [error, setError] = useState("");
@@ -20,10 +23,12 @@ export default function Auth({ onLoginSuccess }) {
   const resetFields = () => {
     setName("");
     setEmail("");
+    setEmergencyPhone("");
     setPassword("");
     setConfirmPassword("");
     setCode("");
     setError("");
+    setAgreedToTerms(false);
   };
 
   const switchMode = (newMode) => {
@@ -38,12 +43,20 @@ export default function Auth({ onLoginSuccess }) {
     setInfoMessage("");
 
     if (mode === "signup") {
+      if (!emergencyPhone.trim()) {
+        setError("Please enter your emergency contact number");
+        return;
+      }
       if (!PASSWORD_RULE.test(password)) {
         setError("Password must be at least 8 characters and include a letter and a number");
         return;
       }
       if (password !== confirmPassword) {
         setError("Passwords do not match");
+        return;
+      }
+      if (!agreedToTerms) {
+        setError("You must read and agree to the Terms and Conditions to create an account.");
         return;
       }
     }
@@ -54,7 +67,7 @@ export default function Auth({ onLoginSuccess }) {
     let body = { email, password };
     if (mode === "signup") {
       endpoint = "/signup";
-      body = { name, email, password };
+      body = { name, email, password, emergencyPhone };
     } else if (mode === "forgot") {
       endpoint = "/forgot-password";
       body = { email };
@@ -207,13 +220,13 @@ export default function Auth({ onLoginSuccess }) {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 420px;
-          background: rgba(255, 255, 255, 0.75);
+          max-width: 440px;
+          background: rgba(255, 255, 255, 0.8);
           backdrop-filter: blur(20px) saturate(1.4);
           -webkit-backdrop-filter: blur(20px) saturate(1.4);
           border: 1px solid rgba(255, 255, 255, 0.45);
           border-radius: 26px;
-          padding: 40px 36px 36px;
+          padding: 38px 36px 34px;
           box-shadow: 0 30px 60px -20px rgba(45, 52, 54, 0.15);
           animation: sr-auth-fadeIn 0.5s ease both;
         }
@@ -223,7 +236,7 @@ export default function Auth({ onLoginSuccess }) {
           align-items: center;
           justify-content: center;
           gap: 12px;
-          margin-bottom: 32px;
+          margin-bottom: 28px;
         }
         .sr-auth-brand-icon {
           width: 42px;
@@ -260,9 +273,9 @@ export default function Auth({ onLoginSuccess }) {
           text-align: center;
         }
         .sr-auth-subheading {
-          font-size: 14px;
+          font-size: 13.5px;
           color: #636e72;
-          margin: 0 0 28px;
+          margin: 0 0 24px;
           text-align: center;
           line-height: 1.5;
         }
@@ -270,7 +283,7 @@ export default function Auth({ onLoginSuccess }) {
         .sr-auth-form {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 14px;
         }
 
         .sr-auth-input-group {
@@ -335,15 +348,81 @@ export default function Auth({ onLoginSuccess }) {
         }
 
         .sr-auth-hint {
+          font-size: 11.5px;
+          color: #7f8c8d;
+          margin: -6px 0 2px 4px;
+          line-height: 1.35;
+        }
+
+        .sr-auth-terms-container {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-top: 4px;
+          padding: 10px 12px;
+          background: rgba(91, 154, 139, 0.05);
+          border: 1px solid rgba(91, 154, 139, 0.15);
+          border-radius: 12px;
+        }
+
+        .sr-auth-checkbox-label {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          font-size: 12.5px;
+          color: #4a5568;
+          line-height: 1.45;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .sr-auth-checkbox {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 18px;
+          height: 18px;
+          border: 1.5px solid #95a5a6;
+          border-radius: 5px;
+          margin-top: 2px;
+          cursor: pointer;
+          display: grid;
+          place-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+          background: #fff;
+        }
+
+        .sr-auth-checkbox:checked {
+          background-color: #2b614f;
+          border-color: #2b614f;
+        }
+
+        .sr-auth-checkbox:checked::before {
+          content: "✓";
+          font-weight: bold;
           font-size: 12px;
-          color: #95a5a6;
-          margin: -8px 0 0 4px;
-          line-height: 1.4;
+          color: white;
+        }
+
+        .sr-auth-terms-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          font-family: inherit;
+          font-size: inherit;
+          color: #2b614f;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .sr-auth-terms-btn:hover {
+          color: #1f4739;
         }
 
         .sr-auth-forgot-link {
           text-align: right;
-          margin: -8px 0 0;
+          margin: -6px 0 0;
         }
         .sr-auth-forgot-link button {
           background: none;
@@ -451,7 +530,7 @@ export default function Auth({ onLoginSuccess }) {
 
         .sr-auth-toggle {
           text-align: center;
-          margin-top: 20px;
+          margin-top: 18px;
           font-size: 13.5px;
           color: #636e72;
         }
@@ -487,6 +566,143 @@ export default function Auth({ onLoginSuccess }) {
           flex: 1;
           height: 1px;
           background: rgba(91, 154, 139, 0.15);
+        }
+
+        /* Terms Modal Styling */
+        .sr-terms-modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(23, 30, 33, 0.55);
+          backdrop-filter: blur(8px);
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          animation: sr-auth-fadeIn 0.25s ease;
+        }
+
+        .sr-terms-modal-card {
+          background: #ffffff;
+          border-radius: 24px;
+          width: 100%;
+          max-width: 560px;
+          max-height: 85vh;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.8);
+          overflow: hidden;
+        }
+
+        .sr-terms-modal-header {
+          padding: 22px 24px;
+          border-bottom: 1px solid #edf2f7;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #fdfefe;
+        }
+
+        .sr-terms-modal-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-weight: 700;
+          font-size: 18px;
+          color: #2b614f;
+        }
+
+        .sr-terms-modal-close {
+          background: #f1f5f4;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #64748b;
+          transition: all 0.2s ease;
+        }
+        .sr-terms-modal-close:hover {
+          background: #e2e8f0;
+          color: #1e293b;
+        }
+
+        .sr-terms-modal-body {
+          padding: 24px;
+          overflow-y: auto;
+          font-size: 13.5px;
+          line-height: 1.6;
+          color: #475569;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .sr-terms-modal-body h4 {
+          margin: 0 0 4px;
+          color: #1e293b;
+          font-size: 14.5px;
+          font-weight: 700;
+        }
+
+        .sr-terms-alert-box {
+          background: rgba(234, 88, 12, 0.08);
+          border: 1px solid rgba(234, 88, 12, 0.2);
+          border-radius: 14px;
+          padding: 14px 16px;
+          display: flex;
+          gap: 12px;
+          color: #9a3412;
+          font-size: 13px;
+        }
+
+        .sr-terms-modal-footer {
+          padding: 16px 24px;
+          border-top: 1px solid #edf2f7;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          background: #f8fafc;
+        }
+
+        .sr-terms-btn-decline {
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          color: #64748b;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .sr-terms-btn-decline:hover {
+          background: #f1f5f9;
+          color: #334155;
+        }
+
+        .sr-terms-btn-accept {
+          padding: 10px 22px;
+          border-radius: 999px;
+          border: none;
+          background: #2b614f;
+          color: #fff;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(43, 97, 79, 0.2);
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .sr-terms-btn-accept:hover {
+          background: #1f4739;
         }
 
         @media (max-width: 480px) {
@@ -617,6 +833,27 @@ export default function Auth({ onLoginSuccess }) {
                   />
                 </div>
 
+                {mode === "signup" && (
+                  <>
+                    <div className="sr-auth-input-group">
+                      <Phone size={16} className="sr-auth-input-icon" />
+                      <input
+                        type="tel"
+                        placeholder="Emergency contact number (+9779XXXXXXXX)"
+                        value={emergencyPhone}
+                        onChange={(e) => setEmergencyPhone(e.target.value)}
+                        required
+                        className="sr-auth-input"
+                        id="input-auth-emergency-phone"
+                        autoComplete="tel"
+                      />
+                    </div>
+                    <span className="sr-auth-hint">
+                      Primary contact number used for critical wellness alerts
+                    </span>
+                  </>
+                )}
+
                 {mode !== "forgot" && (
                   <>
                     <div className="sr-auth-input-group">
@@ -650,6 +887,30 @@ export default function Auth({ onLoginSuccess }) {
                             id="input-auth-confirm-password"
                             autoComplete="new-password"
                           />
+                        </div>
+
+                        <div className="sr-auth-terms-container">
+                          <label className="sr-auth-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={agreedToTerms}
+                              onChange={(e) => setAgreedToTerms(e.target.checked)}
+                              className="sr-auth-checkbox"
+                              id="cb-auth-terms"
+                            />
+                            <span>
+                              I have read and agree to the{" "}
+                              <button
+                                type="button"
+                                className="sr-auth-terms-btn"
+                                onClick={() => setShowTermsModal(true)}
+                                id="btn-open-terms"
+                              >
+                                Terms and Conditions
+                              </button>{" "}
+                              and Privacy Policy.
+                            </span>
+                          </label>
                         </div>
                       </>
                     )}
@@ -723,6 +984,93 @@ export default function Auth({ onLoginSuccess }) {
           </>
         )}
       </div>
+
+      {/* Terms and Conditions Modal */}
+      {showTermsModal && (
+        <div className="sr-terms-modal-overlay" onClick={() => setShowTermsModal(false)}>
+          <div className="sr-terms-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="sr-terms-modal-header">
+              <div className="sr-terms-modal-title">
+                <FileText size={20} />
+                <span>Terms & Conditions and Privacy Policy</span>
+              </div>
+              <button
+                type="button"
+                className="sr-terms-modal-close"
+                onClick={() => setShowTermsModal(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="sr-terms-modal-body">
+              <div className="sr-terms-alert-box">
+                <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <strong>Important Crisis Notice:</strong> SerenityScreen is an AI-assisted wellness companion for tracking mental wellbeing. It is <strong>NOT</strong> an emergency dispatcher or medical diagnostic provider. If you are experiencing a severe mental health crisis, call 988 or your local emergency services immediately.
+                </div>
+              </div>
+
+              <div>
+                <h4>1. Acceptance of Terms</h4>
+                <p>
+                  By creating an account or using SerenityScreen, you agree to these Terms and Conditions and our Privacy Policy. If you do not agree to these terms, please do not use the application.
+                </p>
+              </div>
+
+              <div>
+                <h4>2. Emergency Contact Authorization</h4>
+                <p>
+                  As part of the account sign-up process, you provide a designated emergency contact phone number. You authorize SerenityScreen to record this number in your account profile and display or notify this contact when critical safety alerts or elevated distress levels are flagged in your weekly analysis or screening assessments.
+                </p>
+              </div>
+
+              <div>
+                <h4>3. Data Privacy & Confidentiality</h4>
+                <p>
+                  We prioritize your privacy. All audio reflections, text transcripts, and emotional screening data are processed securely. We do not sell your personal data or voice recordings to third parties.
+                </p>
+              </div>
+
+              <div>
+                <h4>4. User Responsibilities</h4>
+                <p>
+                  You agree to provide accurate registration details, including a valid name, email address, and active emergency phone number. You are responsible for keeping your login credentials confidential.
+                </p>
+              </div>
+
+              <div>
+                <h4>5. Disclaimer & Limitation of Liability</h4>
+                <p>
+                  SerenityScreen provides automated insights and speech sentiment analysis for self-care and monitoring purposes only. The outputs do not constitute formal psychiatric or clinical diagnosis.
+                </p>
+              </div>
+            </div>
+
+            <div className="sr-terms-modal-footer">
+              <button
+                type="button"
+                className="sr-terms-btn-decline"
+                onClick={() => setShowTermsModal(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="sr-terms-btn-accept"
+                onClick={() => {
+                  setAgreedToTerms(true);
+                  setShowTermsModal(false);
+                }}
+              >
+                <Check size={16} />
+                I Agree & Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
