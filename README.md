@@ -1,4 +1,4 @@
-# SerenityScreen — Multimodal Mental Health Screening System
+# Lucid — Multimodal Mental Health Screening System
 
 > **Academic Project** | 4th Semester Semester Project  
 > **Backbone Models**: MentalBERT (Text Classification) + wav2vec2-base-960h (Vocal Feature Extraction)  
@@ -8,7 +8,7 @@
 
 ## 🌟 Project Overview
 
-**SerenityScreen** is an end-to-end multimodal mental health screening platform designed to assist in evaluating clinical reflections through a combination of spoken speech characteristics (audio acoustics) and transcribed transcripts (text semantics). 
+**Lucid** is an end-to-end multimodal mental health screening platform designed to assist in evaluating clinical reflections through a combination of spoken speech characteristics (audio acoustics) and transcribed transcripts (text semantics). 
 
 The system records or accepts a user's verbal reflection, transcribes it, and outputs three critical indicators:
 1. **Primary Condition Detected** (Normal, Anxiety, Depression, Stress, Suicidal) — *derived from text semantics using a fine-tuned MentalBERT joint classifier.*

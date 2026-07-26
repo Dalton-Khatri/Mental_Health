@@ -11,7 +11,7 @@ export const ARTICLES = [
 
 Our voice carries subtle features like pitch, jitter (frequency variations), shimmer (amplitude variations), and tempo. When we experience emotional distress, stress, or depression, our autonomic nervous system alters our vocal cord tension and breathing patterns. These microscopic changes are often imperceptible to the human ear, but AI models trained on clinical datasets (like DAIC-WOZ) can recognize these patterns.
 
-By tracking your voice patterns over time, SerenityScreen builds a personalized emotional baseline. This allows it to detect early markers of high stress or mood shifts, giving you proactive insights into your wellness.`
+By tracking your voice patterns over time, Lucid builds a personalized emotional baseline. This allows it to detect early markers of high stress or mood shifts, giving you proactive insights into your wellness.`
   },
   {
     id: "article_2",

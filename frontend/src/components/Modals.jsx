@@ -838,7 +838,7 @@ export function ChatModal({ onClose }) {
     {
       id: "1",
       sender: "counselor",
-      text: "Hello, thank you for reaching out to Serenity Support. My name is Sarah. I'm here to listen and help you stay safe. What's on your mind today?",
+      text: "Hello, thank you for reaching out to Lucid Support. My name is Sarah. I'm here to listen and help you stay safe. What's on your mind today?",
       time: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     }
   ]);
@@ -889,7 +889,7 @@ export function ChatModal({ onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2ecc71" }} />
             <div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 650 }}>Serenity Crisis Chat</h3>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 650 }}>Lucid Crisis Chat</h3>
               <span style={{ fontSize: 11, opacity: 0.8 }}>Sarah - Crisis Counselor</span>
             </div>
           </div>

@@ -1,5 +1,5 @@
 """
-app.py -- SerenityScreen ML Backend
+app.py -- Lucid ML Backend
 
 FastAPI server that provides:
   /api/transcribe   -> Whisper speech-to-text
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     global whisper_model, predictor, wav2vec2_model, wav2vec2_processor
 
     print("=" * 60)
-    print("  SerenityScreen ML Backend -- Starting Up")
+    print("  Lucid ML Backend -- Starting Up")
     print("=" * 60)
 
     # 1. Load Whisper
@@ -145,7 +145,7 @@ async def lifespan(app: FastAPI):
 
 # ── App ──
 
-app = FastAPI(title="SerenityScreen ML Backend", lifespan=lifespan)
+app = FastAPI(title="Lucid ML Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

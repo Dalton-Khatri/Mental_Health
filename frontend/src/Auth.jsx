@@ -511,7 +511,7 @@ export default function Auth({ onLoginSuccess }) {
             <Heart size={18} fill="#fff" stroke="none" />
           </div>
           <div className="sr-auth-brand-text">
-            <span className="sr-auth-brand-name">SerenityScreen</span>
+            <span className="sr-auth-brand-name">Lucid</span>
             <span className="sr-auth-brand-tagline">Your Wellness Companion</span>
           </div>
         </div>

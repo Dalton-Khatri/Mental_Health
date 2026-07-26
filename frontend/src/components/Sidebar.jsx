@@ -18,7 +18,7 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
           <Heart size={18} fill="#fff" stroke="none" />
         </div>
         <div className="sr-sidebar-brand-text">
-          <span className="sr-brand-name">SerenityScreen</span>
+          <span className="sr-brand-name">Lucid</span>
           <span className="sr-brand-tagline">Your Wellness Companion</span>
         </div>
       </div>
