@@ -1,6 +1,6 @@
 // ragService.js – core RAG logic
-import { getEmbedding } from './embedder.js';
-import { search, getAll } from './vectorStore.js';
+const { getEmbedding } = require('./embedder.js');
+const { search, getAll } = require('./vectorStore.js');
 
 // OpenAI ChatCompletion – fallback LLM
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

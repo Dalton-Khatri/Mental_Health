@@ -1,5 +1,5 @@
 // Gemini embedder (gemini-embedding-001)
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
 // Gemini API key must be set in env as GEMINI_API_KEY
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
