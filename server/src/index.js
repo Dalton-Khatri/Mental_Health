@@ -26,5 +26,9 @@ app.use('/api/screenings', screeningRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/weekly-analysis', weeklyAnalysisRoutes);
 
+// Register RAG chat endpoint
+import chatRouter from './rag/chatController.js';
+app.use('/api/chat', chatRouter);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

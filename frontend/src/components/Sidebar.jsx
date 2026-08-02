@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Home, AudioLines, Sparkles, BookOpen, Heart, Wind, MessageSquare } from "lucide-react";
+import ChatSidebar from "./ChatSidebar";
 
 export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
+  const [showChat, setShowChat] = useState(false);
+
   const navItems = [
     { id: "home", label: "Home", icon: <Home size={18} /> },
     { id: "conversation", label: "Voice Reflection", icon: <MessageSquare size={18} /> },
