@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Loader2 } from "lucide-react";
+import './ChatSidebar.css';
+
 
 // Simple ChatSidebar component
 export default function ChatSidebar({ user, onClose }) {

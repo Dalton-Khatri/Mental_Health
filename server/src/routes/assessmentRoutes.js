@@ -1,7 +1,9 @@
-const express = require('express');
-const multer = require('multer');
-const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+import express from 'express';
+import multer from 'multer';
+import prisma from '../prismaClient.js';
+import fs from 'fs';
+import FormData from 'form-data';
+import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -24,7 +26,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     return res.status(400).json({ error: 'No audio file uploaded' });
   }
   try {
-    const fs = require('fs');
+
     const pythonForm = new FormData();
     const fileBuffer = fs.readFileSync(req.file.path);
     pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
@@ -104,7 +106,7 @@ router.post(
 
       if (combinedAudioFile) {
         try {
-          const fs = require('fs');
+
           const pythonForm = new FormData();
           const fileBuffer = fs.readFileSync(combinedAudioFile.path);
           pythonForm.append('file', new Blob([fileBuffer]), combinedAudioFile.originalname);
@@ -243,4 +245,4 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

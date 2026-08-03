@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-
-// Load cache from JSON file on startup
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cachePath = path.resolve(__dirname, 'ragCache.json');
 let cache = [];
 try {

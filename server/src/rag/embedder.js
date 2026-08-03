@@ -1,5 +1,5 @@
 // Gemini embedder (gemini-embedding-001)
-const fetch = require('node-fetch');
+
 
 // Gemini API key must be set in env as GEMINI_API_KEY
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -30,4 +30,4 @@ async function getEmbedding(text) {
   return data.embeddings?.[0]?.values ?? [];
 }
 
-module.exports = { getEmbedding };
+export { getEmbedding };

@@ -1,8 +1,10 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import prisma from '../prismaClient.js';
+import authMiddleware from '../middleware/auth.js';
+import fs from 'fs';
+import FormData from 'form-data';
 
 const router = express.Router();
 
@@ -35,7 +37,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
   // Query the Python service to analyze the screening audio
   try {
-    const fs = require('fs');
+    
     const pythonForm = new FormData();
     const fileBuffer = fs.readFileSync(req.file.path);
     pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
@@ -101,4 +103,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
