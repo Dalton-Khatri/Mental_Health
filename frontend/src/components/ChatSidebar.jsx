@@ -24,11 +24,16 @@ export default function ChatSidebar({ user, onClose }) {
     setInput("");
     setLoading(true);
     try {
-      const resp = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/chat/message`, {
+      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const resp = await fetch(`${baseUrl}/api/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: userMsg.content, userId: user?.id })
       });
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error ${resp.status}`);
+      }
       const data = await resp.json();
       const assistantMsg = { role: "assistant", content: data.reply };
       setMessages(prev => [...prev, assistantMsg]);
