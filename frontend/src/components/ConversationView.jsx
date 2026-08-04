@@ -122,7 +122,7 @@ const getQuestionFromTopic = (topicKey, activeQuestions) => {
   };
 };
 
-export default function ConversationView({ user, token, SERVER_API, onSessionComplete }) {
+export default function ConversationView({ user, token, SERVER_API, onAuthError, onSessionComplete }) {
   // Navigation & step states: "intro", "interview", "processing", "results"
   const [step, setStep] = useState("intro");
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -372,6 +372,10 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
       });
 
       if (!res.ok) {
+        if (res.status === 401 && onAuthError) {
+          onAuthError();
+          throw new Error('Session expired. Please log in again.');
+        }
         throw new Error(await res.text() || "Transcription failed");
       }
 
@@ -423,8 +427,12 @@ export default function ConversationView({ user, token, SERVER_API, onSessionCom
         handleSubmitSession(updatedTranscripts);
       }
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Failed to analyze your response. Please try again.");
+      console.error('Voice reflection error:', err);
+      if (err.message.includes('Session expired')) {
+        setErrorMsg('Your session has expired. Please log in again.');
+      } else {
+        setErrorMsg("Failed to analyze your response. Please try again.");
+      }
     } finally {
       setIsTranscribing(false);
     }

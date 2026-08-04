@@ -464,12 +464,22 @@ export default function App() {
   });
   const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  // Auth-aware fetch: auto-logout on 401
+  const authFetch = useCallback(async (url, options = {}) => {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      handleLogout();
+      throw new Error('Session expired. Please log in again.');
+    }
+    return res;
+  }, [handleLogout]);
 
   // Notes/Screenings State
   const [notes, setNotes] = useState([]);
@@ -477,7 +487,7 @@ export default function App() {
 
   const fetchWeeklyAnalysis = useCallback(() => {
     if (!token) return;
-    fetch(`${SERVER_API}/weekly-analysis`, {
+    authFetch(`${SERVER_API}/weekly-analysis`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -486,15 +496,15 @@ export default function App() {
       })
       .then((data) => setWeeklyAnalysis(data))
       .catch((err) => console.error("Weekly analysis error:", err));
-  }, [token]);
+  }, [token, authFetch]);
 
   useEffect(() => {
     if (!token) return;
 
     // Fetch both screenings (quick voice screening) and assessments (guided reflection sessions)
     Promise.all([
-      fetch(`${SERVER_API}/screenings`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json()),
-      fetch(`${SERVER_API}/assessments`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json())
+      authFetch(`${SERVER_API}/screenings`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json()),
+      authFetch(`${SERVER_API}/assessments`, { headers: { Authorization: `Bearer ${token}` } }).then(res => res.json())
     ])
       .then(([screeningsData, assessmentsData]) => {
         const mappedScreenings = Array.isArray(screeningsData) ? screeningsData.map((s) => ({
@@ -542,7 +552,7 @@ export default function App() {
       .catch((err) => console.error("Failed to load wellness history:", err));
 
     fetchWeeklyAnalysis();
-  }, [token, fetchWeeklyAnalysis]);
+  }, [token, fetchWeeklyAnalysis, authFetch]);
 
   // Today's Focus Checklist State (Persisted in LocalStorage)
   const [focusTasks, setFocusTasks] = useState(() => {
@@ -826,6 +836,7 @@ export default function App() {
             user={user}
             token={token}
             SERVER_API={SERVER_API}
+            onAuthError={handleLogout}
             onSessionComplete={() => {
               // Refresh screenings
               fetch(`${SERVER_API}/screenings`, {
