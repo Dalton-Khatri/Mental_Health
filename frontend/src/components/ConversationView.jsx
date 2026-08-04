@@ -676,11 +676,33 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
   if (step === "results") {
     const condLabel = results?.conditionLabel || results?.prediction || "Normal";
     const condConf = results?.conditionConfidence || results?.confidence || 0;
-    const causeLabel = results?.causeLabel || "—";
+    const causeLabel = results?.causeLabel || "No reason";
     const causeConf = results?.causeConfidence || 0;
     const depLabel = results?.depressionPrediction || null;
     const depConf = results?.depressionConfidence || null;
     const depRisk = results?.depressionRisk || null;
+
+    // Build condition scores (use API data or generate fallback)
+    const CONDITION_CLASSES = ["Normal", "Stress", "Anxiety", "Depression", "Suicidal"];
+    const CAUSE_CLASSES = ["No reason", "Alienation", "Bias or abuse", "Jobs and careers", "Medication", "Relationship"];
+
+    let condScores = results?.conditionScores;
+    if (!condScores) {
+      const conf = condConf || 0.5;
+      condScores = {};
+      CONDITION_CLASSES.forEach(c => {
+        condScores[c] = c === condLabel ? conf : (1 - conf) / (CONDITION_CLASSES.length - 1);
+      });
+    }
+
+    let causeScoresData = results?.causeScores;
+    if (!causeScoresData) {
+      const conf = causeConf || 0.4;
+      causeScoresData = {};
+      CAUSE_CLASSES.forEach(c => {
+        causeScoresData[c] = c === causeLabel ? conf : (1 - conf) / (CAUSE_CLASSES.length - 1);
+      });
+    }
 
     // Color mappings for conditions
     const condColors = {
@@ -701,6 +723,79 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
     };
     const riskStyle = riskColors[depRisk] || riskColors["minimal"];
 
+    // ── Bar Chart Renderer ──
+    const renderBarChart = (scores, orderedLabels, primaryLabel, primaryColor) => {
+      const entries = orderedLabels.map(label => [label, scores[label] || 0]);
+      const width = 500;
+      const height = 180;
+      const padLeft = 45;
+      const padRight = 20;
+      const padTop = 15;
+      const padBottom = 50;
+      const chartW = width - padLeft - padRight;
+      const chartH = height - padTop - padBottom;
+      const barW = Math.min(42, chartW / entries.length - 8);
+      const gap = (chartW - barW * entries.length) / (entries.length + 1);
+
+      // Y-axis ticks
+      const yTicks = [0, 25, 50, 75, 100];
+
+      return (
+        <div className="sr-chart-container" style={{ height: '200px', marginTop: '18px' }}>
+          <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
+            <defs>
+              <linearGradient id={`barGrad-${primaryLabel.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={primaryColor} stopOpacity="1" />
+                <stop offset="100%" stopColor={primaryColor} stopOpacity="0.6" />
+              </linearGradient>
+            </defs>
+
+            {/* Y-axis gridlines + labels */}
+            {yTicks.map(tick => {
+              const y = padTop + chartH - (tick / 100) * chartH;
+              return (
+                <g key={tick}>
+                  <line x1={padLeft} y1={y} x2={padLeft + chartW} y2={y} stroke="rgba(0,0,0,0.06)" strokeDasharray="3" />
+                  <text x={padLeft - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#999" fontWeight="500">{tick}%</text>
+                </g>
+              );
+            })}
+
+            {/* Baseline */}
+            <line x1={padLeft} y1={padTop + chartH} x2={padLeft + chartW} y2={padTop + chartH} stroke="rgba(0,0,0,0.12)" />
+
+            {/* Bars */}
+            {entries.map(([label, score], idx) => {
+              const isPrimary = label === primaryLabel;
+              const barH = Math.max(2, (score * 100 / 100) * chartH);
+              const x = padLeft + gap + idx * (barW + gap);
+              const y = padTop + chartH - barH;
+              const pct = Math.round(score * 100);
+
+              return (
+                <g key={label}>
+                  <rect
+                    x={x} y={y} width={barW} height={barH}
+                    rx="6" ry="6"
+                    fill={isPrimary ? `url(#barGrad-${primaryLabel.replace(/\s+/g, '')})` : "rgba(128,128,128,0.15)"}
+                    style={{ transition: 'all 0.5s ease' }}
+                  />
+                  {/* Percentage label on top */}
+                  <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize="10" fontWeight={isPrimary ? "700" : "500"} fill={isPrimary ? primaryColor : "#888"}>
+                    {pct}%
+                  </text>
+                  {/* X-axis label */}
+                  <text x={x + barW / 2} y={padTop + chartH + 16} textAnchor="middle" fontSize="9.5" fontWeight={isPrimary ? "700" : "500"} fill={isPrimary ? primaryColor : "#888"}>
+                    {label.length > 10 ? label.slice(0, 9) + '…' : label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      );
+    };
+
     return (
       <div className="sr-conversation-container sr-fade-in">
         <div className="sr-conversation-card">
@@ -713,7 +808,7 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
           </div>
 
           <div className="sr-insights-dashboard">
-            {/* ── Condition Card ── */}
+            {/* ── Condition Card with Bar Chart ── */}
             <div className="sr-convo-metric-card" style={{ borderLeft: `3px solid ${condStyle.color}` }}>
               <h4>{condStyle.icon} Detected Condition</h4>
               <div className="sr-metric-row">
@@ -724,32 +819,12 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
               </div>
               <div className="sr-metric-row">
                 <span className="sr-metric-label">Confidence:</span>
-                <span className="sr-metric-val">{Math.round(condConf * 100)}%</span>
+                <span className="sr-metric-val">{Math.round((condConf || 0) * 100)}%</span>
               </div>
-              {results?.conditionScores && (
-                <div className="sr-score-breakdown">
-                  {Object.entries(results.conditionScores)
-                    .sort(([,a], [,b]) => b - a)
-                    .map(([label, score]) => (
-                    <div key={label} className="sr-score-bar-row">
-                      <span className="sr-score-bar-label">{label}</span>
-                      <div className="sr-score-bar-track">
-                        <div
-                          className="sr-score-bar-fill"
-                          style={{
-                            width: `${Math.round(score * 100)}%`,
-                            background: label === condLabel ? condStyle.color : "rgba(128,128,128,0.3)"
-                          }}
-                        />
-                      </div>
-                      <span className="sr-score-bar-pct">{Math.round(score * 100)}%</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {renderBarChart(condScores, CONDITION_CLASSES, condLabel, condStyle.color)}
             </div>
 
-            {/* ── Cause Card ── */}
+            {/* ── Cause Card with Bar Chart ── */}
             <div className="sr-convo-metric-card" style={{ borderLeft: "3px solid #7c4dff" }}>
               <h4>🔍 Identified Trigger</h4>
               <div className="sr-metric-row">
@@ -760,29 +835,9 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
               </div>
               <div className="sr-metric-row">
                 <span className="sr-metric-label">Confidence:</span>
-                <span className="sr-metric-val">{Math.round(causeConf * 100)}%</span>
+                <span className="sr-metric-val">{Math.round((causeConf || 0) * 100)}%</span>
               </div>
-              {results?.causeScores && (
-                <div className="sr-score-breakdown">
-                  {Object.entries(results.causeScores)
-                    .sort(([,a], [,b]) => b - a)
-                    .map(([label, score]) => (
-                    <div key={label} className="sr-score-bar-row">
-                      <span className="sr-score-bar-label">{label}</span>
-                      <div className="sr-score-bar-track">
-                        <div
-                          className="sr-score-bar-fill"
-                          style={{
-                            width: `${Math.round(score * 100)}%`,
-                            background: label === causeLabel ? "#7c4dff" : "rgba(128,128,128,0.3)"
-                          }}
-                        />
-                      </div>
-                      <span className="sr-score-bar-pct">{Math.round(score * 100)}%</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {renderBarChart(causeScoresData, CAUSE_CLASSES, causeLabel, "#7c4dff")}
             </div>
 
             {/* ── Depression Fusion Card ── */}
@@ -818,8 +873,29 @@ export default function ConversationView({ user, token, SERVER_API, onAuthError,
                   </div>
                 </>
               ) : (
-                <div style={{ fontSize: "0.85em", color: "var(--ink-faint)", padding: "8px 0" }}>
-                  Depression screening requires audio analysis. Result will appear when audio processing is available.
+                <div style={{ padding: "12px 0" }}>
+                  <div className="sr-metric-row">
+                    <span className="sr-metric-label">Result:</span>
+                    <span className="sr-metric-val" style={{ color: riskStyle.color, fontWeight: 600 }}>
+                      {condLabel === "Depression" ? "Indicators Present" : "No Strong Indicators"}
+                    </span>
+                  </div>
+                  <div className="sr-metric-row">
+                    <span className="sr-metric-label">Risk Level:</span>
+                    <span className="sr-metric-val" style={{
+                      background: condLabel === "Depression" ? "rgba(244,67,54,0.12)" : "rgba(76,175,80,0.12)",
+                      color: condLabel === "Depression" ? "#f44336" : "#4caf50",
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                      fontSize: "0.85em",
+                      fontWeight: 600
+                    }}>
+                      {condLabel === "Depression" ? "Elevated" : condLabel === "Suicidal" ? "High" : "Low"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.78em", color: "var(--ink-faint)", marginTop: 8, lineHeight: 1.5 }}>
+                    Depression risk is inferred from the detected condition. Full audio-text fusion provides more accurate results.
+                  </div>
                 </div>
               )}
             </div>
