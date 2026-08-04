@@ -128,10 +128,14 @@ router.post(
 
       if (combinedAudioFile) {
         try {
-
-          const pythonForm = new FormData();
           const fileBuffer = fs.readFileSync(combinedAudioFile.path);
-          pythonForm.append('file', new Blob([fileBuffer]), combinedAudioFile.originalname);
+
+          // Use Node's native FormData + File (Node 20+) for compatibility with Python FastAPI
+          const pythonForm = new globalThis.FormData();
+          const file = new globalThis.File([fileBuffer], combinedAudioFile.originalname, {
+            type: combinedAudioFile.mimetype || 'audio/wav'
+          });
+          pythonForm.append('file', file);
 
           // Forward pre-built transcript if available (avoids re-running Whisper)
           const preBuiltTranscript = req.body.preBuiltTranscript;
