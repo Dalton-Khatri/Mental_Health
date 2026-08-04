@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { Mic, CheckCircle2, Circle, Star, Calendar, ChevronRight, Wind, Heart, MessageSquare } from "lucide-react";
 
-export default function HomeView({ 
+export default function HomeView({
   user,
-  notes, 
-  onStartScreening, 
+  notes,
+  onStartScreening,
   onStartConversation,
-  focusTasks, 
-  onToggleFocusTask, 
+  focusTasks,
+  onToggleFocusTask,
   onOpenModal,
   weeklyAnalysis
 }) {
@@ -24,27 +24,25 @@ export default function HomeView({
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const result = [];
     const today = new Date();
-    
+
     // We want to generate the last 7 days ending with today
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const dayName = days[d.getDay()];
       const dateStr = d.toDateString();
-      
+
       // Find average score for this day
-      const dayNotes = notes.filter((n) => new Date(n.createdAt).toDateString() === dateStr);
+      const dayNotes = notes.filter((n) => new Date(n.createdAt).toDateString() === dateStr && n.score != null);
       let avgScore = 0;
       if (dayNotes.length > 0) {
-        const scores = dayNotes.map((n) => n.score || 0);
+        const scores = dayNotes.map((n) => n.score);
         avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
       } else {
-        // Mock fallback if no real screening exists on this day, to ensure the chart is populated
-        // This ensures the visual looks complete as in the screenshots
-        const mockMap = { Sun: 60, Mon: 68, Tue: 62, Wed: 74, Thu: 85, Fri: 72, Sat: 65 };
-        avgScore = mockMap[dayName] || 60;
+        // No real data for this day – display a flat line at 0 to indicate missing data
+        avgScore = 0;
       }
-      
+
       result.push({ day: dayName, score: avgScore, isReal: dayNotes.length > 0 });
     }
     return result;
@@ -66,7 +64,7 @@ export default function HomeView({
     const padding = 30;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
-    
+
     const maxVal = 100;
     const minVal = 0;
 
@@ -82,22 +80,22 @@ export default function HomeView({
     // Generate path using bezier curves for smooth layout
     let pathD = "";
     let areaD = `M ${points[0].x} ${height - padding} `; // Start of area fill path
-    
+
     if (points.length > 0) {
       pathD = `M ${points[0].x} ${points[0].y} `;
       areaD += `L ${points[0].x} ${points[0].y} `;
-      
+
       for (let i = 1; i < points.length; i++) {
         // Control points for smooth bezier curve
         const cpX1 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
         const cpY1 = points[i - 1].y;
         const cpX2 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
         const cpY2 = points[i].y;
-        
+
         pathD += `C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${points[i].x} ${points[i].y} `;
         areaD += `C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${points[i].x} ${points[i].y} `;
       }
-      
+
       areaD += `L ${points[points.length - 1].x} ${height - padding} Z`; // Close the area
     }
 
@@ -132,11 +130,11 @@ export default function HomeView({
             <g key={idx}>
               {/* Ripple animation for peak point */}
               {isPeak && (
-                <circle 
-                  cx={p.x} 
-                  cy={p.y} 
-                  r="8" 
-                  fill="var(--accent)" 
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="8"
+                  fill="var(--accent)"
                   opacity="0.3"
                   className="sr-chart-peak-ripple"
                 />
@@ -184,8 +182,8 @@ export default function HomeView({
           <div className="sr-card-header">
             <h3>Wellness Overview</h3>
             <div className="sr-dropdown-container">
-              <select 
-                value={timeframe} 
+              <select
+                value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
                 className="sr-select"
                 id="select-timeframe"
@@ -195,10 +193,10 @@ export default function HomeView({
               </select>
             </div>
           </div>
-          
+
           <div className="sr-chart-container">
             {renderSvgChart()}
-            
+
             {/* Chart X-axis Labels */}
             <div className="sr-chart-xaxis">
               {chartData.map((d, idx) => {
@@ -219,10 +217,10 @@ export default function HomeView({
           <div className="sr-card-header">
             <h3>Today's Focus</h3>
           </div>
-          
+
           <div className="sr-focus-list">
             {/* Task 1: Morning Breathwork */}
-            <div 
+            <div
               className={`sr-focus-item ${focusTasks.breathwork ? "sr-focus-item--completed" : ""}`}
               onClick={() => onToggleFocusTask("breathwork")}
               role="checkbox"
@@ -246,7 +244,7 @@ export default function HomeView({
             </div>
 
             {/* Task 2: Review Voice Trends */}
-            <div 
+            <div
               className={`sr-focus-item ${!isTrendsUnlocked ? "sr-focus-item--locked" : ""} ${focusTasks.trends && isTrendsUnlocked ? "sr-focus-item--completed" : ""}`}
               onClick={() => isTrendsUnlocked && onToggleFocusTask("trends")}
               role="checkbox"
@@ -264,7 +262,7 @@ export default function HomeView({
               <div className="sr-focus-item-text">
                 <span className="sr-focus-title">Review Voice Trends</span>
                 <span className="sr-focus-subtitle">
-                  {isTrendsUnlocked 
+                  {isTrendsUnlocked
                     ? (focusTasks.trends ? "Reviewed trends" : "Tap to complete review of today's voice score")
                     : "Unlock after afternoon screening"
                   }
@@ -289,14 +287,14 @@ export default function HomeView({
           <div className="sr-card-header" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>🧠 Dynamic AI Weekly Diagnostics</h3>
             <span style={{
-              background: 
+              background:
                 weeklyAnalysis.riskLevel === "critical" ? "rgba(183,28,28,0.12)" :
-                weeklyAnalysis.riskLevel === "high" ? "rgba(244,67,54,0.12)" :
-                weeklyAnalysis.riskLevel === "moderate" ? "rgba(255,152,0,0.12)" : "rgba(76,175,80,0.12)",
-              color: 
+                  weeklyAnalysis.riskLevel === "high" ? "rgba(244,67,54,0.12)" :
+                    weeklyAnalysis.riskLevel === "moderate" ? "rgba(255,152,0,0.12)" : "rgba(76,175,80,0.12)",
+              color:
                 weeklyAnalysis.riskLevel === "critical" ? "#b71c1c" :
-                weeklyAnalysis.riskLevel === "high" ? "#f44336" :
-                weeklyAnalysis.riskLevel === "moderate" ? "#ff9800" : "#4caf50",
+                  weeklyAnalysis.riskLevel === "high" ? "#f44336" :
+                    weeklyAnalysis.riskLevel === "moderate" ? "#ff9800" : "#4caf50",
               padding: "4px 12px",
               borderRadius: "16px",
               fontSize: "12px",

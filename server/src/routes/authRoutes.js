@@ -1,10 +1,9 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const prisma = require('../prismaClient');
-const { sendVerificationCode, sendResetPasswordEmail } = require('../utils/mailer');
-
+import express from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import prisma from '../prismaClient.js';
+import { sendVerificationCode, sendResetPasswordEmail } from '../utils/mailer.js';
 const router = express.Router();
 
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -269,4 +268,4 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,7 +1,9 @@
-const express = require('express');
-const multer = require('multer');
-const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+import express from 'express';
+import multer from 'multer';
+import prisma from '../prismaClient.js';
+import fs from 'fs';
+import FormData from 'form-data';
+import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -24,15 +26,37 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     return res.status(400).json({ error: 'No audio file uploaded' });
   }
   try {
-    const fs = require('fs');
-    const pythonForm = new FormData();
     const fileBuffer = fs.readFileSync(req.file.path);
-    pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
 
-    const pyRes = await fetch('http://localhost:8000/api/transcribe', {
-      method: 'POST',
-      body: pythonForm
+    // Use Node's native FormData + File (Node 20+) for compatibility with Python FastAPI
+    const pythonForm = new globalThis.FormData();
+    const file = new globalThis.File([fileBuffer], req.file.originalname, {
+      type: req.file.mimetype || 'audio/webm'
     });
+    pythonForm.append('file', file);
+
+    // Retry up to 2 times in case Python backend is briefly restarting
+    let pyRes;
+    let lastError;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        pyRes = await fetch('http://localhost:8000/api/transcribe', {
+          method: 'POST',
+          body: pythonForm
+        });
+        break; // success, exit retry loop
+      } catch (fetchErr) {
+        lastError = fetchErr;
+        if (attempt < 1) {
+          console.log(`Transcribe attempt ${attempt + 1} failed, retrying in 2s...`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+    }
+
+    if (!pyRes) {
+      throw lastError || new Error('All transcribe attempts failed');
+    }
 
     if (pyRes.ok) {
       const data = await pyRes.json();
@@ -47,7 +71,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     res.status(502).json({ error: 'Transcription service unreachable' });
   } finally {
     // Clean up temp file (not needed after forwarding)
-    try { require('fs').unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
   }
 });
 
@@ -104,7 +128,7 @@ router.post(
 
       if (combinedAudioFile) {
         try {
-          const fs = require('fs');
+
           const pythonForm = new FormData();
           const fileBuffer = fs.readFileSync(combinedAudioFile.path);
           pythonForm.append('file', new Blob([fileBuffer]), combinedAudioFile.originalname);
@@ -243,4 +267,4 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

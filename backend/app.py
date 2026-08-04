@@ -382,6 +382,98 @@ async def analyze_text_endpoint(req: TextAnalysisRequest):
     return {"results": results, "summary": summary}
 
 
+# ── MentalBERT Dynamic Chat Engine ──
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[dict] = []
+
+def generate_mentalbert_reply(text: str, condition: str, cause: str, cond_conf: float, cause_conf: float) -> str:
+    text_lower = text.lower()
+    
+    # 1. Emergency / Suicidal check
+    if condition == "Suicidal" or any(w in text_lower for w in ["suicide", "kill myself", "want to die", "end it all"]):
+        return (
+            "I hear how much pain you're in right now, and I want you to know you don't have to go through this alone. "
+            "Your life has immense value. If you're feeling overwhelmed or having thoughts of harming yourself, please reach out to someone who can help right now:\n\n"
+            "• National Crisis Lifeline: Call or text 988 (Available 24/7)\n"
+            "• Crisis Text Line: Text HOME to 741741\n"
+            "• Emergency Services: Call 911 or visit your nearest emergency room\n\n"
+            "Please talk to a trusted friend, family member, or healthcare provider. I'm here to listen, but your safety is the most important thing."
+        )
+
+    # 2. Anxiety & Panic
+    if condition == "Anxiety" or any(w in text_lower for w in ["anxious", "panic", "worried", "fear", "nervous"]):
+        cause_note = f" especially around {cause.lower()}" if cause not in ["No reason", "Normal"] else ""
+        return (
+            f"It sounds like you're experiencing a lot of anxiety right now{cause_note}. Anxiety can feel overwhelming in your body and mind.\n\n"
+            "Try this quick 5-4-3-2-1 grounding exercise with me right now:\n"
+            "• Name 5 things you can see around you\n"
+            "• 4 things you can physically touch\n"
+            "• 3 things you can hear\n"
+            "• 2 things you can smell\n"
+            "• 1 deep, slow breath\n\n"
+            "Take your time. What is one thought or situation causing you the most worry right now?"
+        )
+
+    # 3. Depression & Low Mood
+    if condition == "Depression" or any(w in text_lower for w in ["depressed", "sad", "hopeless", "lonely", "exhausted", "tired"]):
+        cause_note = f" related to {cause.lower()}" if cause not in ["No reason", "Normal"] else ""
+        return (
+            f"I hear how heavy things feel for you right now{cause_note}. Feeling depressed can make even small daily tasks feel like a mountain.\n\n"
+            "Please remember to be gentle with yourself today. You don't need to fix everything all at once. "
+            "Focusing on just one small act of self-care—like drinking a glass of water or stepping outside for 2 minutes—is enough.\n\n"
+            "Would you like to talk a bit more about what's been weighing on your mind?"
+        )
+
+    # 4. Stress & Overwhelm
+    if condition == "Stress" or any(w in text_lower for w in ["stress", "overwhelmed", "busy", "work", "pressure", "burnout"]):
+        cause_note = f" regarding {cause.lower()}" if cause not in ["No reason", "Normal"] else ""
+        return (
+            f"It sounds like you're carrying a high level of stress{cause_note}. Chronic stress can take a heavy toll on your energy and focus.\n\n"
+            "Here are a few quick stress-relief steps you can take right now:\n"
+            "1. Take 3 deep diaphragmatic breaths (4 seconds in, 4 seconds hold, 6 seconds out).\n"
+            "2. Step away from screen work for 5 minutes.\n"
+            "3. Identify one thing on your to-do list that can wait until tomorrow.\n\n"
+            "What feels like the biggest source of pressure for you right now?"
+        )
+
+    # 5. General / Warm Conversational Response
+    return (
+        f"Thank you for sharing that with me. I'm listening. "
+        f"It sounds like you're reflecting on things{' related to ' + cause.lower() if cause not in ['No reason', 'Normal'] else ''}. "
+        f"How are you feeling overall today, and what kind of support would feel most helpful right now?"
+    )
+
+
+@app.post("/api/chat-response")
+async def chat_response_endpoint(req: ChatRequest):
+    """
+    Generate an intelligent, empathetic chat response powered by MentalBERT analysis.
+    """
+    user_text = req.message.strip()
+    if not user_text:
+        return {"reply": "I'm here for you. How can I help you today?"}
+
+    cond = "Normal"
+    cause = "No reason"
+    cond_conf = 0.0
+    cause_conf = 0.0
+
+    if predictor is not None:
+        try:
+            pred = predictor.predict(user_text)
+            cond = pred.get("condition", "Normal")
+            cause = pred.get("cause", "No reason")
+            cond_conf = pred.get("condition_confidence", 0.0)
+            cause_conf = pred.get("cause_confidence", 0.0)
+        except Exception as e:
+            print(f"[Chat Endpoint] Model prediction error: {e}")
+
+    reply = generate_mentalbert_reply(user_text, cond, cause, cond_conf, cause_conf)
+    return {"reply": reply, "analysis": {"condition": cond, "cause": cause, "confidence": cond_conf}}
+
+
 # ── Run ──
 
 if __name__ == "__main__":

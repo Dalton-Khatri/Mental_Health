@@ -1,6 +1,6 @@
-const express = require('express');
-const prisma = require('../prismaClient');
-const authMiddleware = require('../middleware/auth');
+import express from 'express';
+import prisma from '../prismaClient.js';
+import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -210,4 +210,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

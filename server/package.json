@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@prisma/client": "5.22.0",
     "bcrypt": "^6.0.0",
@@ -20,6 +20,8 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "open": "^11.0.0",
-    "prisma": "5.22.0"
+    "prisma": "5.22.0",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.2"
   }
 }
