@@ -1,21 +1,3 @@
-"""
-model.py -- Mental Health Model Inference Module
-
-Loads all model checkpoints and provides inference functions:
-  - Phase 4: JointTwoHeadClassifier (MentalBERT backbone + Head 1 + Head 2)
-             Predicts condition (5 classes) and cause (6 classes) from text.
-  - Phase 5: TextMLP and AudioMLP
-             Each compresses a 768-dim embedding to 128-dim intermediate features.
-  - Phase 6: FusionMLP
-             Concatenates text + audio features (256-dim) and predicts depression.
-
-How .pt files work:
-  A .pt file is a serialized PyTorch checkpoint containing the model's learned
-  weights. torch.load() deserializes them into RAM, then load_state_dict()
-  fills the matching model architecture. After that, the model sits in memory
-  and processes inputs instantly (~50ms per prediction on CPU).
-"""
-
 import os
 import numpy as np
 import torch
@@ -23,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 
-# ── Configuration ──────────────────────────────────────────────────
+#Configuration
 
 BACKBONE_NAME = "mental/mental-bert-base-uncased"
 MAX_LENGTH = 256
@@ -53,9 +35,8 @@ DEFAULT_H2_LABELS = {
 }
 
 
-# ══════════════════════════════════════════════════════════════════
+
 #  Phase 4: Joint Two-Head Classifier
-# ══════════════════════════════════════════════════════════════════
 
 class JointTwoHeadClassifier(nn.Module):
     """
@@ -86,9 +67,7 @@ class JointTwoHeadClassifier(nn.Module):
             return outputs.last_hidden_state[:, 0, :]  # (batch, 768)
 
 
-# ══════════════════════════════════════════════════════════════════
 #  Phase 5: Unimodal Depression MLPs (Text and Audio)
-# ══════════════════════════════════════════════════════════════════
 
 class DepressionMLP(nn.Module):
     """
@@ -122,11 +101,7 @@ class DepressionMLP(nn.Module):
         """Returns just the 128-dim intermediate features (for fusion)."""
         return self.encoder(x)
 
-
-# ══════════════════════════════════════════════════════════════════
 #  Phase 6: Fusion MLP
-# ══════════════════════════════════════════════════════════════════
-
 class FusionMLP(nn.Module):
     """
     Fuses text (128-dim) and audio (128-dim) intermediate features.
@@ -158,9 +133,7 @@ class FusionMLP(nn.Module):
         return self.net(combined)
 
 
-# ══════════════════════════════════════════════════════════════════
 #  Full Inference Engine
-# ══════════════════════════════════════════════════════════════════
 
 class MentalHealthPredictor:
     """
@@ -189,7 +162,7 @@ class MentalHealthPredictor:
 
         hf_token = os.environ.get("HF_TOKEN")
 
-        # ── Phase 4: Joint model ──
+        #Phase 4: Joint model
         if not os.path.exists(JOINT_CHECKPOINT):
             raise FileNotFoundError(
                 f"Joint checkpoint not found at: {JOINT_CHECKPOINT}\n"
@@ -223,7 +196,7 @@ class MentalHealthPredictor:
         f1 = checkpoint.get("combined_macro_f1", "?")
         print(f"[Model] OK Joint model loaded (combined_F1={f1})")
 
-        # ── Phase 5 + 6: Depression fusion models ──
+        #Phase 5 + 6: Depression fusion models
         try:
             self._load_fusion_models()
             self.fusion_available = True
@@ -272,7 +245,7 @@ class MentalHealthPredictor:
         print(f"[Model]   Fusion MLP loaded (dev_F1={fusion_ckpt.get('dev_macro_f1', '?'):.4f}, "
               f"test_acc={test_metrics.get('accuracy', '?')})")
 
-    # ── Text Prediction (Phase 4) ──
+    #Text Prediction (Phase 4)
 
     def predict(self, text: str) -> dict:
         """Predict condition and cause from text."""
@@ -304,7 +277,7 @@ class MentalHealthPredictor:
             "cause_scores": h2_scores,
         }
 
-    # ── Text Embedding Extraction (for fusion) ──
+    #Text Embedding Extraction (for fusion)
 
     def get_text_embedding(self, text: str) -> torch.Tensor:
         """Extract the 768-dim CLS embedding from the joint backbone."""
@@ -316,7 +289,7 @@ class MentalHealthPredictor:
         attention_mask = inputs["attention_mask"].to(self.device)
         return self.model.get_embedding(input_ids, attention_mask)  # (1, 768)
 
-    # ── Depression Fusion (Phase 5 + 6) ──
+    #Depression Fusion (Phase 5 + 6)
 
     def predict_depression(self, text_embedding: torch.Tensor, audio_embedding: torch.Tensor) -> dict:
         """
@@ -362,7 +335,7 @@ class MentalHealthPredictor:
             "depression_risk": risk,
         }
 
-    # ── Full Assessment (all phases combined) ──
+    #Full Assessment (all phases combined)
 
     def full_assessment(self, text: str, audio_embedding_np: np.ndarray = None) -> dict:
         """

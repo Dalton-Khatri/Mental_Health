@@ -1,20 +1,3 @@
-"""
-app.py -- SerenityScreen ML Backend
-
-FastAPI server that provides:
-  /api/transcribe   -> Whisper speech-to-text
-  /api/screening    -> Transcribe + predict condition & cause
-  /api/assessment   -> Transcribe + full assessment (condition, cause, depression)
-  /api/analyze-text -> Analyze raw text (no audio) -- used for weekly analysis
-  /api/health       -> Health check
-
-Models loaded at startup:
-  - Whisper (base) for speech-to-text
-  - Phase 4 joint model for condition + cause prediction
-  - wav2vec2 for audio embedding extraction
-  - Text MLP + Audio MLP + Fusion MLP for depression prediction
-"""
-
 import os
 import sys
 
@@ -39,16 +22,11 @@ wav2vec2_model = None  # wav2vec2 for audio embeddings
 wav2vec2_processor = None
 
 
-# ── Audio embedding extraction ──
+#Audio embedding extraction
 
 def extract_audio_embedding(file_path: str) -> np.ndarray:
     """
     Extract a 768-dim wav2vec2 embedding from an audio file.
-
-    Process:
-      1. Load audio at 16kHz (wav2vec2 requirement)
-      2. Pass through wav2vec2 model
-      3. Mean-pool over time dimension -> single 768-dim vector
     """
     if wav2vec2_model is None or wav2vec2_processor is None:
         return None
@@ -143,7 +121,7 @@ async def lifespan(app: FastAPI):
     print("\n[Shutdown] Cleaning up...")
 
 
-# ── App ──
+#App
 
 app = FastAPI(title="SerenityScreen ML Backend", lifespan=lifespan)
 
@@ -156,7 +134,7 @@ app.add_middleware(
 )
 
 
-# ── Helpers ──
+#Helpers
 
 def transcribe_audio(file_path: str) -> str:
     """Transcribe an audio file using Whisper."""
@@ -174,7 +152,7 @@ def save_upload_to_temp(file: UploadFile) -> str:
         return tmp.name
 
 
-# ── Endpoints ──
+#Endpoints
 
 @app.get("/api/health")
 def health_check():
@@ -317,7 +295,7 @@ async def assessment_endpoint(file: UploadFile = File(...), transcript: str = Fo
             os.remove(temp_path)
 
 
-# ── Text-only analysis (for weekly analysis) ──
+#Text-only analysis (for weekly analysis)
 
 class TextAnalysisRequest(BaseModel):
     texts: list[str]
@@ -382,7 +360,7 @@ async def analyze_text_endpoint(req: TextAnalysisRequest):
     return {"results": results, "summary": summary}
 
 
-# ── MentalBERT Dynamic Chat Engine ──
+#MentalBERT Dynamic Chat Engine
 
 class ChatRequest(BaseModel):
     message: str

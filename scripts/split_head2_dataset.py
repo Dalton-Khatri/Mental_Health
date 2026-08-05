@@ -1,15 +1,3 @@
-"""
-split_head2_dataset.py
-
-Takes the combined cause dataset (CAMS + SAD) and produces stratified
-head2_train.csv, head2_val.csv, head2_test.csv in data/combined/.
-
-Also removes the old cams_train/val/test.csv files since they are
-replaced by the new head2 splits.
-
-Split ratio: 80% train / 10% val / 10% test (stratified by category_name).
-"""
-
 import os
 import re
 import pandas as pd

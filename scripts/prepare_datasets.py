@@ -1,17 +1,3 @@
-"""
-prepare_datasets.py
-
-Cleans, tags, splits, and combines the Mukherjee, Dreaddit, and CAMS
-datasets for a dual head mental health text classifier.
-
-Head 1 (Condition): trained on Mukherjee + Dreaddit combined.
-Head 2 (Cause):     trained on CAMS alone.
-
-This script does NOT train any model. It only produces clean, labeled,
-split, and tagged CSV files ready for training later.
-
-"""
-
 import os
 import re
 import sys

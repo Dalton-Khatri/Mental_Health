@@ -122,6 +122,7 @@ Mental_Health/
 │
 ├── notebooks/                           # Jupyter Notebooks used during design phase on Kaggle
 │   └── train_joint_phase4.ipynb         # Alternating-batch joint training pipeline for Head 1 & Head 2
+├── setup_ffmpeg.py                      # One-click script to download full FFmpeg build (~130MB)
 └── .gitignore                           # Defines untracked local checkpoints, node_modules, and ffmpeg
 ```
 
@@ -129,10 +130,17 @@ Mental_Health/
 
 ## ⚙️ Setup & Installation
 
-### Prerequisite
+### Prerequisites
 * Node.js (v18+)
 * Python (v3.10+)
 * PostgreSQL (locally active)
+
+### 0. FFmpeg Setup (Required — One Time)
+FFmpeg is needed to convert browser-recorded audio (WebM/Opus) to WAV for Whisper. It is **not** included in the repo due to its size (~130MB). Run this once after cloning:
+```bash
+python setup_ffmpeg.py
+```
+This downloads a full FFmpeg build and places `ffmpeg.exe` inside `backend/`.
 
 ### 1. Database Setup (`/server`)
 Create a database in PostgreSQL and add a `.env` file under `/server`:

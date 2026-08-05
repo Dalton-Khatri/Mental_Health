@@ -5,9 +5,7 @@ import librosa
 import soundfile as sf
 from tqdm import tqdm
 
-# ----------------------------
 # Paths
-# ----------------------------
 DATASET_PATH = r"D:\Mental_health\extended daic-woz"
 
 OUTPUT_AUDIO = "D:/Mental_health/processed/audio"
@@ -19,9 +17,7 @@ os.makedirs(OUTPUT_TEXT, exist_ok=True)
 TARGET_SR = 16000
 
 
-# ---------------------------------------------------------
 # Load transcript (comma-delimited, participant-only already)
-# ---------------------------------------------------------
 def load_transcript(csv_path):
     df = pd.read_csv(csv_path, sep=",")
     df.columns = [c.strip().lower() for c in df.columns]
@@ -34,9 +30,7 @@ def load_transcript(csv_path):
     return df
 
 
-# ---------------------------------------------------------
 # Clean transcript while keeping pauses
-# ---------------------------------------------------------
 def clean_transcript(csv_path):
     df = load_transcript(csv_path)
     if df is None:
@@ -66,11 +60,9 @@ def clean_transcript(csv_path):
     return " ".join(sentences)
 
 
-# ---------------------------------------------------------
 # Cut participant audio using transcript timestamps
 # (file is already participant-only, so this just trims
 # out silence/other segments not covered by the transcript)
-# ---------------------------------------------------------
 def extract_participant_audio(csv_path, audio, sr):
     df = load_transcript(csv_path)
     if df is None:
@@ -97,9 +89,7 @@ def extract_participant_audio(csv_path, audio, sr):
     return np.concatenate(segments)
 
 
-# ---------------------------------------------------------
 # Process one participant
-# ---------------------------------------------------------
 def process_participant(folder):
     participant_id = folder.replace("_P", "")
 
@@ -140,9 +130,7 @@ def process_participant(folder):
         f.write(text)
 
 
-# ---------------------------------------------------------
 # Process whole dataset
-# ---------------------------------------------------------
 folders = sorted(os.listdir(DATASET_PATH))
 
 for folder in tqdm(folders):

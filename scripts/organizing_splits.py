@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 
-# ----------------------------
 # Paths
-# ----------------------------
 SPLIT_DIR       = "D:/Mental_health/daic_woz_processing/splits"   # folder containing the four CSVs
 PROCESSED_AUDIO = "processed/audio"
 PROCESSED_TEXT  = "processed/transcript"
@@ -13,21 +11,17 @@ OUTPUT_DIR      = "processed/splits"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ----------------------------
 # Split CSV filenames
-# ----------------------------
 TRAIN_CSV     = os.path.join(SPLIT_DIR, "train_split_Depression_AVEC2017.csv")
 DEV_CSV       = os.path.join(SPLIT_DIR, "dev_split_Depression_AVEC2017.csv")
 TEST_CSV      = os.path.join(SPLIT_DIR, "test_split_Depression_AVEC2017.csv")
 FULL_TEST_CSV = os.path.join(SPLIT_DIR, "full_test_split.csv")
 
 
-# ---------------------------------------------------------
 # Load one split CSV and normalize column names.
 # Handles the quirks we know about:
 #   - test CSV has lowercase participant_ID
 #   - full_test uses PHQ_Binary / PHQ_Score (no "8")
-# ---------------------------------------------------------
 def load_split(path, split_name):
 
     df = pd.read_csv(path)
@@ -51,10 +45,8 @@ def load_split(path, split_name):
     return df
 
 
-# ---------------------------------------------------------
 # Check whether the processed audio + transcript files
 # actually exist for a given participant ID
-# ---------------------------------------------------------
 def files_exist(participant_id):
 
     audio = os.path.join(PROCESSED_AUDIO, f"{participant_id}.wav")
@@ -63,9 +55,7 @@ def files_exist(participant_id):
     return os.path.exists(audio) and os.path.exists(text)
 
 
-# ---------------------------------------------------------
 # Load all splits
-# ---------------------------------------------------------
 print("Loading split CSVs ...")
 
 train     = load_split(TRAIN_CSV,     "train")
@@ -81,10 +71,8 @@ print(f"  Test      : {len(test)} participants (no labels)")
 print(f"  Full test : {len(full_test)} participants (labeled)")
 
 
-# ---------------------------------------------------------
 # Cross-check against processed files
 # Flag any participant whose audio/transcript is missing
-# ---------------------------------------------------------
 print("\nChecking processed files exist ...")
 
 for df, name in [(train, "train"), (dev, "dev"), (full_test, "full_test")]:
@@ -98,9 +86,7 @@ for df, name in [(train, "train"), (dev, "dev"), (full_test, "full_test")]:
         print(f"  {name} — all processed files found")
 
 
-# ---------------------------------------------------------
 # Class distribution in train set
-# ---------------------------------------------------------
 if "phq8_binary" in train.columns:
 
     counts = train["phq8_binary"].value_counts().sort_index()
@@ -118,12 +104,11 @@ if "phq8_binary" in train.columns:
     print(f"  {{0: {class_weights[0]}, 1: {class_weights[1]}}}")
 
 
-# ---------------------------------------------------------
 # Save clean manifest CSVs for downstream stages to read
 # Each CSV has: participant_id, phq8_binary, phq8_score,
 # gender, the 8 subscale columns (where available), split,
 # and the absolute paths to the processed audio + text files
-# ---------------------------------------------------------
+
 def add_file_paths(df):
 
     df = df.copy()

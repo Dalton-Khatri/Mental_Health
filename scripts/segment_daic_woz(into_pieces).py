@@ -1,41 +1,3 @@
-"""
-E-DAIC segmentation pipeline for MIL (Wav2Vec2 + MentalBERT) training.
-
-Dataset layout expected:
-    D:\\EDAIC\\<ID>_P\\<ID>_P\\<ID>_AUDIO.wav
-    D:\\EDAIC\\<ID>_P\\<ID>_P\\<ID>_Transcript.csv   (participant-only, Ellie removed)
-
-Output layout produced:
-    D:\\EDAIC\\processed_segments\\<ID>\\segment001.wav
-    D:\\EDAIC\\processed_segments\\<ID>\\segment001.txt
-    D:\\EDAIC\\processed_segments\\<ID>\\segment002.wav
-    ...
-    D:\\EDAIC\\processed_segments\\<ID>\\manifest.json
-
-Segmentation philosophy
-------------------------
-The transcript already has Ellie removed, so consecutive participant rows can
-look topically disconnected even when they're one continuous answer (Ellie's
-question sat in the gap). Because of that, segmentation here is driven
-PRIMARILY by target duration/word-count and gap size, not by sentence
-similarity. Semantic similarity is only consulted as a secondary heuristic,
-at candidate boundaries, once the segment already satisfies its minimum
-targets -- to decide whether the participant is still continuing the same
-train of thought (merge through the gap) or has moved to a clearly different
-topic (cut here).
-
-Segment audio duration = sum of the individual participant utterance
-durations that were merged into it (i.e. the actual concatenated audio you
-get after stripping out Ellie/silence), not wall-clock span.
-
-Requirements:
-    pip install pandas librosa soundfile tqdm
-    pip install sentence-transformers   # optional, enables the secondary
-                                         # semantic heuristic; pipeline still
-                                         # works without it (falls back to
-                                         # pure gap/duration/word logic)
-"""
-
 import os
 import re
 import json
@@ -50,9 +12,7 @@ import soundfile as sf
 from tqdm import tqdm
 
 
-# ============================================================
 # Config
-# ============================================================
 
 @dataclass
 class SegmentConfig:
@@ -80,9 +40,7 @@ class SegmentConfig:
 TARGET_SR = 16000
 
 
-# ============================================================
 # Transcript loading / cleaning
-# ============================================================
 
 def load_transcript(csv_path, cfg: SegmentConfig):
     df = pd.read_csv(csv_path)
@@ -115,9 +73,7 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-# ============================================================
 # Optional semantic secondary heuristic
-# ============================================================
 
 class SemanticScorer:
     """
@@ -147,9 +103,7 @@ class SemanticScorer:
         return sim >= threshold
 
 
-# ============================================================
 # Core segmentation logic
-# ============================================================
 
 @dataclass
 class Utterance:
@@ -194,24 +148,7 @@ class Segment:
 
 
 def build_segments(df: pd.DataFrame, cfg: SegmentConfig, scorer: SemanticScorer):
-    """
-    Greedy, target-driven turn segmentation.
 
-    - Always keep merging utterances until BOTH min_duration and min_words
-      are satisfied, regardless of gap size (a segment is never cut early
-      just because Ellie's turn created a gap).
-    - Once minimums are met, a large gap becomes a "candidate boundary":
-        * if a semantic scorer is available and judges the next utterance a
-          continuation of the same thought, keep merging past the gap
-          (up to target_max, then hard_max).
-        * otherwise, cut here.
-    - A hard ceiling always forces a cut regardless of semantics, to avoid
-      runaway segments.
-    - Any leftover tail that doesn't meet minimums gets merged into the
-      previous segment (unless that would blow the hard ceiling, in which
-      case it's kept as its own final segment anyway -- a slightly-under
-      final segment beats an excessively long one).
-    """
     utterances = [
         Utterance(float(r["start_time"]), float(r["end_time"]), r["text"])
         for _, r in df.iterrows()
@@ -271,9 +208,7 @@ def build_segments(df: pd.DataFrame, cfg: SegmentConfig, scorer: SemanticScorer)
     return segments
 
 
-# ============================================================
 # Audio slicing (participant-only, Ellie never included)
-# ============================================================
 
 def slice_and_concatenate(audio: np.ndarray, sr: int, segment: Segment) -> np.ndarray:
     pieces = []
@@ -287,9 +222,7 @@ def slice_and_concatenate(audio: np.ndarray, sr: int, segment: Segment) -> np.nd
     return np.concatenate(pieces)
 
 
-# ============================================================
 # Per-participant processing
-# ============================================================
 
 def find_participants(root: Path):
     for outer in sorted(root.glob("*_P")):
@@ -406,9 +339,7 @@ def parse_participant_list(spec):
             ids.add(str(int(part)))
 
     return ids
-# ============================================================
 # CLI / batch driver
-# ============================================================
 
 def main():
     parser = argparse.ArgumentParser()
@@ -479,5 +410,3 @@ if __name__ == "__main__":
     main()
 
 
-
-# python segment_daic_woz.py --participants 600-605 
