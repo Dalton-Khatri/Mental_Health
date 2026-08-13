@@ -727,7 +727,7 @@ export default function Auth({ onLoginSuccess }) {
             <Heart size={18} fill="#fff" stroke="none" />
           </div>
           <div className="sr-auth-brand-text">
-            <span className="sr-auth-brand-name">SerenityScreen</span>
+            <span className="sr-auth-brand-name">Lucid</span>
             <span className="sr-auth-brand-tagline">Your Wellness Companion</span>
           </div>
         </div>
@@ -1008,21 +1008,21 @@ export default function Auth({ onLoginSuccess }) {
               <div className="sr-terms-alert-box">
                 <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <strong>Important Crisis Notice:</strong> SerenityScreen is an AI-assisted wellness companion for tracking mental wellbeing. It is <strong>NOT</strong> an emergency dispatcher or medical diagnostic provider. If you are experiencing a severe mental health crisis, call 988 or your local emergency services immediately.
+                  <strong>Important Crisis Notice:</strong> Lucid is an AI-assisted wellness companion for tracking mental wellbeing. It is <strong>NOT</strong> an emergency dispatcher or medical diagnostic provider. If you are experiencing a severe mental health crisis, call 988 or your local emergency services immediately.
                 </div>
               </div>
 
               <div>
                 <h4>1. Acceptance of Terms</h4>
                 <p>
-                  By creating an account or using SerenityScreen, you agree to these Terms and Conditions and our Privacy Policy. If you do not agree to these terms, please do not use the application.
+                  By creating an account or using Lucid, you agree to these Terms and Conditions and our Privacy Policy. If you do not agree to these terms, please do not use the application.
                 </p>
               </div>
 
               <div>
                 <h4>2. Emergency Contact Authorization</h4>
                 <p>
-                  As part of the account sign-up process, you provide a designated emergency contact phone number. You authorize SerenityScreen to record this number in your account profile and display or notify this contact when critical safety alerts or elevated distress levels are flagged in your weekly analysis or screening assessments.
+                  As part of the account sign-up process, you provide a designated emergency contact phone number. You authorize Lucid to record this number in your account profile and display or notify this contact when critical safety alerts or elevated distress levels are flagged in your weekly analysis or screening assessments.
                 </p>
               </div>
 
@@ -1043,7 +1043,7 @@ export default function Auth({ onLoginSuccess }) {
               <div>
                 <h4>5. Disclaimer & Limitation of Liability</h4>
                 <p>
-                  SerenityScreen provides automated insights and speech sentiment analysis for self-care and monitoring purposes only. The outputs do not constitute formal psychiatric or clinical diagnosis.
+                  Lucid provides automated insights and speech sentiment analysis for self-care and monitoring purposes only. The outputs do not constitute formal psychiatric or clinical diagnosis.
                 </p>
               </div>
             </div>

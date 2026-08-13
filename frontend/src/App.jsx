@@ -809,7 +809,7 @@ export default function App() {
       case "insights": return "Voice Insights";
       case "activities": return "Wellness Activities";
       case "resources": return "Knowledge Library";
-      default: return "SerenityScreen";
+      default: return "Lucid";
     }
   };
 
