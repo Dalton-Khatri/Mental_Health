@@ -1,5 +1,5 @@
 """
-FFmpeg Setup Script for SerenityScreen
+FFmpeg Setup Script for Lucid
 ---------------------------------------
 Downloads a full-featured FFmpeg build into the backend/ folder.
 Run this once after cloning the repository.
