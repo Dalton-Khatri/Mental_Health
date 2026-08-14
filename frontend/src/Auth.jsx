@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Heart, Mail, Lock, User, Loader2, CheckCircle2, ShieldCheck, Phone, FileText, X, ShieldAlert, Check } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/auth` : "http://localhost:5000/api/auth";
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
 export default function Auth({ onLoginSuccess }) {

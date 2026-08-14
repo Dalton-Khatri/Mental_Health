@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle, Loader2, Heart } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/auth` : "http://localhost:5000/api/auth";
 
 export default function VerifyEmail() {
   const [status, setStatus] = useState("loading"); // "loading" | "success" | "error"
