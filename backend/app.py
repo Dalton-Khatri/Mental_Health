@@ -483,5 +483,6 @@ async def chat_response_endpoint(req: ChatRequest):
 # ── Run ──
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=(port == 8000))
+    port = int(os.environ.get("PORT", 7860))
+    is_dev = os.environ.get("DEV", "false").lower() == "true"
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=is_dev)
