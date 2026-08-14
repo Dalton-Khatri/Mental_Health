@@ -42,7 +42,8 @@ import {
 } from "./components/Modals";
 import { ARTICLES } from "./components/ResourcesView";
 
-const SERVER_API = "http://localhost:5000/api";
+const SERVER_API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -296,7 +297,7 @@ function NoteModal({ note, onClose, onRename }) {
     /* FUTURE BACKEND CONNECTION NOTE:
        When renaming a screening, send a PATCH request to the backend database:
        
-       fetch(`http://localhost:8000/api/screenings/${note.id}`, {
+       fetch(`${SERVER_API}/screenings/${note.id}`, {
          method: "PATCH",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({ title: trimmed })
@@ -510,7 +511,7 @@ export default function App() {
         const mappedScreenings = Array.isArray(screeningsData) ? screeningsData.map((s) => ({
           id: s.id,
           title: `Voice Screening — ${new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
-          url: s.audioUrl ? `http://localhost:5000${s.audioUrl}` : "",
+          url: s.audioUrl ? `${SERVER_URL}${s.audioUrl}` : "",
           peaks: Array(60).fill(0.2),
           duration: 0,
           mood: 3,
@@ -527,7 +528,7 @@ export default function App() {
         const mappedAssessments = Array.isArray(assessmentsData) ? assessmentsData.map((a) => ({
           id: a.id,
           title: `Voice Reflection — ${new Date(a.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}`,
-          url: a.combinedAudioUrl ? `http://localhost:5000${a.combinedAudioUrl}` : "",
+          url: a.combinedAudioUrl ? `${SERVER_URL}${a.combinedAudioUrl}` : "",
           peaks: Array(60).fill(0.2),
           duration: a.totalDuration || 0,
           mood: 3,
@@ -733,7 +734,7 @@ export default function App() {
               ? {
                   ...n,
                   id: data.id,
-                  url: data.audioUrl ? `http://localhost:5000${data.audioUrl}` : "",
+                  url: data.audioUrl ? `${SERVER_URL}${data.audioUrl}` : "",
                   transcript: data.transcript,
                   conditionLabel: data.conditionLabel,
                   conditionConfidence: data.conditionConfidence,
@@ -780,7 +781,7 @@ export default function App() {
 
   const deleteNote = (id) => {
     /* FUTURE BACKEND CONNECTION NOTE:
-       Send a DELETE request to `http://localhost:8000/api/screenings/${id}`
+       Send a DELETE request to `${SERVER_API}/screenings/${id}`
     */
     setNotes((prev) => prev.filter((n) => n.id !== id));
     setActiveNote((n) => (n && n.id === id ? null : n));
