@@ -40,7 +40,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     let lastError;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        pyRes = await fetch('http://localhost:8000/api/transcribe', {
+        pyRes = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/api/transcribe`, {
           method: 'POST',
           body: pythonForm
         });
@@ -143,7 +143,7 @@ router.post(
             pythonForm.append('transcript', preBuiltTranscript);
           }
 
-          const pyRes = await fetch('http://localhost:8000/api/assessment', {
+          const pyRes = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/api/assessment`, {
             method: 'POST',
             body: pythonForm
           });

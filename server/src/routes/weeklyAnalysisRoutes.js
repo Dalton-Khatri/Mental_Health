@@ -87,7 +87,7 @@ router.get('/', async (req, res) => {
     let batchResults = null;
     if (transcriptsNeedingAnalysis.length > 0) {
       try {
-        const pyRes = await fetch('http://localhost:8000/api/analyze-text', {
+        const pyRes = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/api/analyze-text`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ texts: transcriptsNeedingAnalysis })

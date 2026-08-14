@@ -84,7 +84,7 @@ function generateFallbackResponse(userMessage, retrievedTexts) {
 
 // MentalBERT Local AI Engine (Python backend)
 async function callMentalBERTBackend(userMessage, history = []) {
-  const response = await fetch('http://localhost:8000/api/chat-response', {
+  const response = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/api/chat-response`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: userMessage, history })

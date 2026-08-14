@@ -42,7 +42,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
     const fileBuffer = fs.readFileSync(req.file.path);
     pythonForm.append('file', new Blob([fileBuffer]), req.file.originalname);
 
-    const pyRes = await fetch('http://localhost:8000/api/screening', {
+    const pyRes = await fetch(`${process.env.ML_BACKEND_URL || 'http://localhost:8000'}/api/screening`, {
       method: 'POST',
       body: pythonForm
     });
