@@ -81,6 +81,17 @@ async def lifespan(app: FastAPI):
     print("  Lucid ML Backend -- Starting Up")
     print("=" * 60)
 
+    # 0. Download model artifacts from HF Hub if not present locally
+    artifacts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_artifacts")
+    if not os.path.exists(artifacts_dir) or not os.listdir(artifacts_dir):
+        print("\n[Startup] Downloading model artifacts from HF Hub...")
+        try:
+            from huggingface_hub import snapshot_download
+            snapshot_download(repo_id="Dalton-Khatri/lucid-models", local_dir=artifacts_dir)
+            print("[Startup] OK Model artifacts downloaded")
+        except Exception as e:
+            print(f"[Startup] WARNING Failed to download models: {e}")
+
     # 1. Load Whisper
     print("\n[Startup] Loading Whisper model...")
     try:
@@ -472,4 +483,5 @@ async def chat_response_endpoint(req: ChatRequest):
 # ── Run ──
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=(port == 8000))
