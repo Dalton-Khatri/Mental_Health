@@ -15,6 +15,7 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
   ];
 
   return (
+    <>
     <aside className="sr-sidebar" aria-label="Sidebar Navigation">
       {/* Brand logo */}
       <div className="sr-sidebar-brand" onClick={() => onTabSelect("home")} role="banner">
@@ -71,7 +72,8 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
             <span>Chat</span>
           </button>
         </div>
-      </aside>
+      </div>
+    </aside>
       {/* ChatSidebar overlay */}
       {showChat && (
         <ChatSidebar user={null} onClose={() => setShowChat(false)} />
