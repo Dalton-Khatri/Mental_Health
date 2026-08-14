@@ -1,3 +1,20 @@
+"""
+app.py -- Lucid ML Backend
+
+FastAPI server that provides:
+  /api/transcribe   -> Whisper speech-to-text
+  /api/screening    -> Transcribe + predict condition & cause
+  /api/assessment   -> Transcribe + full assessment (condition, cause, depression)
+  /api/analyze-text -> Analyze raw text (no audio) -- used for weekly analysis
+  /api/health       -> Health check
+
+Models loaded at startup:
+  - Whisper (base) for speech-to-text
+  - Phase 4 joint model for condition + cause prediction
+  - wav2vec2 for audio embedding extraction
+  - Text MLP + Audio MLP + Fusion MLP for depression prediction
+"""
+
 import os
 import sys
 

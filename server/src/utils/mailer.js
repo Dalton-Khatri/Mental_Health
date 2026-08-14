@@ -32,7 +32,7 @@ async function sendVerificationCode(toEmail, code) {
   const transporter = await getTransporter();
 
   const info = await transporter.sendMail({
-    from: '"Lucid" <noreply@serenityscreen.dev>',
+    from: '"Lucid" <noreply@lucid.dev>',
     to: toEmail,
     subject: 'Your Lucid verification code',
     html: `<p>Welcome to Lucid!</p>
@@ -52,7 +52,7 @@ async function sendResetPasswordEmail(toEmail, token) {
   const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: '"Lucid" <noreply@serenityscreen.dev>',
+    from: '"Lucid" <noreply@lucid.dev>',
     to: toEmail,
     subject: 'Reset your Lucid password',
     html: `<p>We received a request to reset your password.</p>

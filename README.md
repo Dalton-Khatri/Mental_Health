@@ -7,7 +7,7 @@
 
 ## 🌟 Project Overview
 
-**Lucid** is an end-to-end multimodal mental health screening platform that analyzes both what a person says and how they say it. The system records a user's verbal reflection, transcribes it using speech-to-text, and produces three key outputs:
+**Lucid** is an end-to-end multimodal mental health screening platform designed to assist in evaluating clinical reflections through a combination of spoken speech characteristics (audio acoustics) and transcribed transcripts (text semantics). 
 
 1. **Mental Health Condition** (Normal, Anxiety, Depression, Stress, Suicidal) — classified from the transcribed text using a domain-specific language model.
 2. **Trigger Cause** (No reason, Bias/Abuse, Jobs/Careers, Medication, Relationship, Alienation) — identified from the transcribed text.

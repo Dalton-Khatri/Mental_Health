@@ -15,17 +15,15 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
   ];
 
   return (
-    <>
-      <aside className="sr-sidebar" aria-label="Sidebar Navigation">
-        {/* Brand logo */}
-        <div className="sr-sidebar-brand" onClick={() => onTabSelect("home")} role="banner">
-          <div className="sr-sidebar-brand-icon">
-            <Heart size={18} fill="#fff" stroke="none" />
-          </div>
-          <div className="sr-sidebar-brand-text">
-            <span className="sr-brand-name">Lucid</span>
-            <span className="sr-brand-tagline">Your Wellness Companion</span>
-          </div>
+    <aside className="sr-sidebar" aria-label="Sidebar Navigation">
+      {/* Brand logo */}
+      <div className="sr-sidebar-brand" onClick={() => onTabSelect("home")} role="banner">
+        <div className="sr-sidebar-brand-icon">
+          <Heart size={18} fill="#fff" stroke="none" />
+        </div>
+        <div className="sr-sidebar-brand-text">
+          <span className="sr-brand-name">Lucid</span>
+          <span className="sr-brand-tagline">Your Wellness Companion</span>
         </div>
 
         {/* Navigation list */}
