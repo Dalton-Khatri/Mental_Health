@@ -485,5 +485,52 @@ async def chat_response_endpoint(req: ChatRequest):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     is_dev = os.environ.get("DEV", "false").lower() == "true"
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=is_dev)
+    is_hf = os.environ.get("SPACE_ID") is not None
 
+    if is_hf:
+        # On HF Spaces with Gradio SDK:
+        # Gradio manages the server - use demo.launch()
+        import gradio as gr
+
+        def _health_status():
+            parts = []
+            parts.append(f"Whisper: {'OK' if whisper_model else 'NOT LOADED'}")
+            parts.append(f"Joint Model: {'OK' if predictor else 'NOT LOADED'}")
+            if predictor:
+                parts.append(f"Fusion: {'OK' if predictor.fusion_available else 'NOT AVAILABLE'}")
+            parts.append(f"wav2vec2: {'OK' if wav2vec2_model else 'NOT LOADED'}")
+            return "\n".join(parts)
+
+        with gr.Blocks(title="Lucid ML Backend") as demo:
+            gr.Markdown("# Lucid ML Backend\nAPI running on this Space.")
+            status_box = gr.Textbox(label="Model Status", interactive=False, lines=5)
+            gr.Button("Refresh").click(fn=_health_status, outputs=status_box)
+            demo.load(fn=_health_status, outputs=status_box)
+
+        # Launch Gradio (it starts its own server), then add our routes
+        demo.launch(server_name="0.0.0.0", server_port=port, prevent_thread_lock=True)
+
+        # Add our FastAPI routes + CORS to Gradio's internal app
+        from fastapi.middleware.cors import CORSMiddleware as _CORS
+        demo.app.add_middleware(_CORS, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+        # Copy all our API routes onto Gradio's app
+        for route in app.routes:
+            demo.app.routes.append(route)
+
+        # Run the lifespan manually to load models
+        import asyncio
+
+        async def _startup():
+            async with lifespan(app):
+                # Keep alive forever
+                while True:
+                    await asyncio.sleep(3600)
+
+        asyncio.run(_startup())
+    else:
+        # Local development
+        if is_dev:
+            uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
+        else:
+            uvicorn.run(app, host="0.0.0.0", port=port)
