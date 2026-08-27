@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
 export default function Auth({ onLoginSuccess }) {
-  const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot" | "verify"
+  const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
@@ -13,11 +13,8 @@ export default function Auth({ onLoginSuccess }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [code, setCode] = useState("");
-  const [pendingEmail, setPendingEmail] = useState(""); // email waiting on verification
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
 
   const resetFields = () => {
@@ -26,7 +23,6 @@ export default function Auth({ onLoginSuccess }) {
     setEmergencyPhone("");
     setPassword("");
     setConfirmPassword("");
-    setCode("");
     setError("");
     setAgreedToTerms(false);
   };
@@ -71,9 +67,6 @@ export default function Auth({ onLoginSuccess }) {
     } else if (mode === "forgot") {
       endpoint = "/forgot-password";
       body = { email };
-    } else if (mode === "verify") {
-      endpoint = "/verify-code";
-      body = { email: pendingEmail, code };
     }
 
     try {
@@ -85,33 +78,17 @@ export default function Auth({ onLoginSuccess }) {
       const data = await res.json();
 
       if (!res.ok) {
-        // If login fails because the account isn't verified yet, send them
-        // straight to the code-entry screen instead of just showing an error.
-        if (mode === "login" && data.needsVerification) {
-          setPendingEmail(data.email || email);
-          setMode("verify");
-          setError("");
-          setInfoMessage("Your account isn't verified yet. Enter the code we sent to your email.");
-          return;
-        }
         throw new Error(data.error || "Something went wrong");
       }
 
-      if (mode === "login") {
+      if (mode === "login" || mode === "signup") {
+        // Both login and signup now return token + user
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
         onLoginSuccess(data.user, data.token);
-      } else if (mode === "signup") {
-        setPendingEmail(email);
-        setMode("verify");
-        resetFields();
-        setInfoMessage(data.message || "We sent a 6-digit code to your email.");
       } else if (mode === "forgot") {
         setInfoMessage(data.message || "If that email is registered, a reset link has been sent.");
         resetFields();
-      } else if (mode === "verify") {
-        setInfoMessage("Email verified! You can now log in.");
-        setTimeout(() => switchMode("login"), 1200);
       }
     } catch (err) {
       setError(err.message);
@@ -120,25 +97,6 @@ export default function Auth({ onLoginSuccess }) {
     }
   };
 
-  const handleResendCode = async () => {
-    setError("");
-    setResending(true);
-    try {
-      const res = await fetch(`${API_URL}/resend-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: pendingEmail }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to resend code");
-      setInfoMessage(data.message || "A new code has been sent.");
-      setCode("");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setResending(false);
-    }
-  };
 
   return (
     <div className="sr-auth-page">
