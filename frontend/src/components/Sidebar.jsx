@@ -1,10 +1,25 @@
-import React, { useState } from "react";
-import { Home, AudioLines, Sparkles, BookOpen, Heart, Wind, MessageSquare } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Home, AudioLines, Sparkles, BookOpen, Wind, MessageSquare, Menu, X } from "lucide-react";
 import ChatSidebar from "./ChatSidebar";
 import "./Sidebar.css";
 
 export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
   const [showChat, setShowChat] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [currentTab]);
+
+  // Close sidebar on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) setMobileOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const navItems = [
     { id: "home", label: "Home", icon: <Home size={18} /> },
@@ -16,15 +31,41 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
 
   return (
     <>
-    <aside className="sr-sidebar" aria-label="Sidebar Navigation">
-      {/* Brand logo */}
-      <div className="sr-sidebar-brand" onClick={() => onTabSelect("home")} role="banner">
-        <div className="sr-sidebar-brand-icon">
-          <Heart size={18} fill="#fff" stroke="none" />
-        </div>
-        <div className="sr-sidebar-brand-text">
-          <span className="sr-brand-name">Lucid</span>
-          <span className="sr-brand-tagline">Your Wellness Companion</span>
+      {/* Mobile hamburger button */}
+      <button
+        className="sr-mobile-hamburger"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
+        id="btn-mobile-menu"
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Overlay for mobile */}
+      {mobileOpen && (
+        <div
+          className="sr-sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside className={`sr-sidebar ${mobileOpen ? "sr-sidebar--open" : ""}`} aria-label="Sidebar Navigation">
+        {/* Mobile close button */}
+        <button
+          className="sr-mobile-close"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation menu"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Brand logo */}
+        <div className="sr-sidebar-brand" onClick={() => onTabSelect("home")} role="banner">
+          <img src="/logo.png" alt="Lucid" className="sr-sidebar-logo" />
+          <div className="sr-sidebar-brand-text">
+            <span className="sr-brand-name">Lucid</span>
+            <span className="sr-brand-tagline">Your Wellness Companion</span>
+          </div>
         </div>
 
         {/* Navigation list */}
@@ -50,7 +91,7 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
           </ul>
         </nav>
 
-        {/* Capsule Start Breathing Button */}
+        {/* Footer buttons */}
         <div className="sr-sidebar-footer">
           <button 
             className="sr-capsule-btn" 
@@ -61,7 +102,6 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
             <Wind size={16} />
             <span>Start Breathing</span>
           </button>
-          {/* Chat toggle button */}
           <button 
             className="sr-capsule-btn" 
             onClick={() => setShowChat(true)}
@@ -72,8 +112,8 @@ export default function Sidebar({ currentTab, onTabSelect, onOpenBreathing }) {
             <span>Chat</span>
           </button>
         </div>
-      </div>
-    </aside>
+      </aside>
+
       {/* ChatSidebar overlay */}
       {showChat && (
         <ChatSidebar user={null} onClose={() => setShowChat(false)} />

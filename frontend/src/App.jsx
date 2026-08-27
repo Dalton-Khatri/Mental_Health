@@ -3131,6 +3131,23 @@ export default function App() {
         .sr-confirm-btn--danger:hover {
           background: #c0392b;
         }
+        /* ─── Responsive: Mobile ─── */
+        @media (max-width: 768px) {
+          .sr-main-workspace {
+            padding-left: 0 !important;
+            padding-top: 56px;
+          }
+          .sr-top-bar {
+            margin-left: 48px;
+          }
+        }
+
+        /* ─── Responsive: Tablet ─── */
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .sr-main-workspace {
+            padding-left: 220px !important;
+          }
+        }
       `}</style>
 
       {/* Background decoration */}
