@@ -480,6 +480,29 @@ async def chat_response_endpoint(req: ChatRequest):
     return {"reply": reply, "analysis": {"condition": cond, "cause": cause, "confidence": cond_conf}}
 
 
+# ── Gradio UI (for HF Spaces compatibility) ──
+
+import gradio as gr
+
+def get_status():
+    parts = []
+    parts.append(f"Whisper: {'✅ OK' if whisper_model else '❌ MISSING'}")
+    parts.append(f"Joint Model: {'✅ OK' if predictor else '❌ MISSING'}")
+    parts.append(f"Fusion: {'✅ OK' if predictor and predictor.fusion_available else '❌ MISSING'}")
+    parts.append(f"wav2vec2: {'✅ OK' if wav2vec2_model else '❌ MISSING'}")
+    return "\n".join(parts)
+
+with gr.Blocks(title="Lucid ML Backend") as demo:
+    gr.Markdown("# 🧠 Lucid ML Backend")
+    gr.Markdown("API endpoints: `/api/screening`, `/api/assessment`, `/api/transcribe`, `/api/analyze-text`, `/api/health`")
+    status_box = gr.Textbox(label="Model Status", value="Loading...", interactive=False)
+    refresh_btn = gr.Button("Refresh Status")
+    refresh_btn.click(fn=get_status, outputs=status_box)
+    demo.load(fn=get_status, outputs=status_box)
+
+# Mount Gradio onto the FastAPI app
+app = gr.mount_gradio_app(app, demo, path="/")
+
 # ── Run ──
 
 if __name__ == "__main__":
