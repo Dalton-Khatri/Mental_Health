@@ -482,6 +482,62 @@ async def chat_response_endpoint(req: ChatRequest):
 
 # ── Run ──
 
+def _load_models_sync():
+    """Load all ML models synchronously (for HF Spaces where lifespan won't run)."""
+    global whisper_model, predictor, wav2vec2_model, wav2vec2_processor
+
+    print("=" * 60)
+    print("  Lucid ML Backend -- Starting Up")
+    print("=" * 60)
+
+    artifacts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_artifacts")
+    if not os.path.exists(artifacts_dir) or not os.listdir(artifacts_dir):
+        print("\n[Startup] Downloading model artifacts from HF Hub...")
+        try:
+            from huggingface_hub import snapshot_download
+            snapshot_download(repo_id="Dalton-Khatri/lucid-models", local_dir=artifacts_dir)
+            print("[Startup] OK Model artifacts downloaded")
+        except Exception as e:
+            print(f"[Startup] WARNING Failed to download models: {e}")
+
+    print("\n[Startup] Loading Whisper model...")
+    try:
+        import whisper
+        import torch as _torch
+        device = "cuda" if _torch.cuda.is_available() else "cpu"
+        whisper_model = whisper.load_model("base", device=device)
+        print(f"[Startup] OK Whisper loaded on {device}")
+    except Exception as e:
+        print(f"[Startup] WARNING Whisper failed to load: {e}")
+
+    print("\n[Startup] Loading ML models...")
+    try:
+        from model import MentalHealthPredictor
+        predictor = MentalHealthPredictor()
+        print("[Startup] OK ML models loaded successfully")
+    except Exception as e:
+        print(f"[Startup] WARNING Model loading failed: {e}")
+
+    print("\n[Startup] Loading wav2vec2 for audio embeddings...")
+    try:
+        from transformers import Wav2Vec2Model, Wav2Vec2Processor
+        import logging
+        logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
+        wav2vec2_processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
+        wav2vec2_model = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base-960h")
+        wav2vec2_model.eval()
+        print("[Startup] OK wav2vec2 loaded")
+    except Exception as e:
+        print(f"[Startup] WARNING wav2vec2 failed to load: {e}")
+
+    print("\n" + "=" * 60)
+    print("  Status: Whisper: " + ("OK" if whisper_model else "MISSING") +
+          " | Joint Model: " + ("OK" if predictor else "MISSING") +
+          " | wav2vec2: " + ("OK" if wav2vec2_model else "MISSING"))
+    print("  Server ready!")
+    print("=" * 60 + "\n")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     is_dev = os.environ.get("DEV", "false").lower() == "true"
@@ -489,14 +545,17 @@ if __name__ == "__main__":
 
     if is_hf:
         import gradio as gr
-        import asyncio
 
+        # Step 1: Load models FIRST (before Gradio starts)
+        _load_models_sync()
+
+        # Step 2: Create Gradio UI
         def _health_status():
             parts = []
             parts.append("Whisper: " + ("OK" if whisper_model else "NOT LOADED"))
             parts.append("Joint Model: " + ("OK" if predictor else "NOT LOADED"))
             if predictor:
-                parts.append("Fusion: " + ("OK" if predictor.fusion_available else "NOT AVAILABLE"))
+                parts.append("Fusion: " + ("OK" if predictor.fusion_available else "N/A"))
             parts.append("wav2vec2: " + ("OK" if wav2vec2_model else "NOT LOADED"))
             return "\n".join(parts)
 
@@ -506,16 +565,16 @@ if __name__ == "__main__":
             gr.Button("Refresh").click(fn=_health_status, outputs=status_box)
             demo.load(fn=_health_status, outputs=status_box)
 
+        # Step 3: Launch Gradio (non-blocking) then add our API routes
         demo.launch(server_name="0.0.0.0", server_port=port, prevent_thread_lock=True)
 
+        # Copy FastAPI routes onto Gradio's internal app
         for route in app.routes:
             demo.app.routes.append(route)
 
-        async def _run_lifespan():
-            async with lifespan(app):
-                while True:
-                    await asyncio.sleep(3600)
-
-        asyncio.run(_run_lifespan())
+        # Keep alive
+        import time
+        while True:
+            time.sleep(3600)
     else:
         uvicorn.run("app:app", host="0.0.0.0", port=port, reload=is_dev)
