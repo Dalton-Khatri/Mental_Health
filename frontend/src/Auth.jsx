@@ -694,13 +694,11 @@ export default function Auth({ onLoginSuccess }) {
           {mode === "login" && "Welcome back"}
           {mode === "signup" && "Create your account"}
           {mode === "forgot" && "Reset your password"}
-          {mode === "verify" && "Verify your email"}
         </h2>
         <p className="sr-auth-subheading">
           {mode === "login" && "Sign in to continue your wellness journey"}
           {mode === "signup" && "Start your path to better mental wellbeing"}
           {mode === "forgot" && "Enter your email and we'll send you a reset link"}
-          {mode === "verify" && `Enter the 6-digit code we sent to ${pendingEmail}`}
         </p>
 
         {infoMessage && (
@@ -710,54 +708,7 @@ export default function Auth({ onLoginSuccess }) {
           </div>
         )}
 
-        {mode === "verify" ? (
-          <form onSubmit={handleSubmit} className="sr-auth-form">
-            <div className="sr-auth-input-group">
-              <ShieldCheck size={16} className="sr-auth-input-icon" style={{ left: 16 }} />
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                required
-                className="sr-auth-code-input"
-                id="input-auth-code"
-                autoComplete="one-time-code"
-              />
-            </div>
-
-            {error && (
-              <div className="sr-auth-error" role="alert">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || code.length !== 6}
-              className="sr-auth-submit"
-              id="btn-verify-code"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={18} className="sr-auth-submit-spinner" />
-                  Verifying...
-                </>
-              ) : (
-                "Verify code"
-              )}
-            </button>
-
-            <p className="sr-auth-resend">
-              Didn't get a code?{" "}
-              <button type="button" onClick={handleResendCode} disabled={resending} id="btn-resend-code">
-                {resending ? "Sending..." : "Resend code"}
-              </button>
-            </p>
-          </form>
-        ) : (
+        {(
           <>
             {!infoMessage && (
               <form onSubmit={handleSubmit} className="sr-auth-form">
